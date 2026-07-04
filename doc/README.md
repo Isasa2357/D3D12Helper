@@ -111,8 +111,10 @@ D3D12Helper/
 │      D3D12ShaderCompiler.{hpp,cpp}   .cso 読込 / D3DCompile / DXC
 │      D3D12Helpers.{hpp,cpp}     Core& を取る自由関数群
 │      D3D12SwapChainHelper.{hpp,cpp}  SwapChain 作成ヘルパ
-├─ doc/      … 本ドキュメント
-└─ sample/   … 使用例
+├─ doc/            … 本ドキュメント
+├─ sample/         … 使用例（6 本）
+├─ test/           … 機能別テスト（CTest 連携）
+└─ CMakeLists.txt  … ルートビルド（ライブラリ + サンプル + テスト）
 ```
 
 ---

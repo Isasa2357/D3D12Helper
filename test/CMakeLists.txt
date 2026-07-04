@@ -1,16 +1,17 @@
 #
-# D3D12Helper sample CMake
+# D3D12Helper test CMake
 #
-# Normally this file is entered from the repository root CMakeLists.txt.
-# It also supports standalone configuration from sample/.
+# Builds one test executable and registers each suite with CTest.
+# The tests are intentionally kept outside src/ so consumers can add only
+# include/ and src/ when embedding the library.
 #
 cmake_minimum_required(VERSION 3.20)
 
 if(NOT TARGET D3D12Helper)
-    project(D3D12HelperSamples LANGUAGES CXX)
+    project(D3D12HelperTests LANGUAGES CXX)
 
     if(NOT WIN32)
-        message(FATAL_ERROR "D3D12Helper samples are Windows-only.")
+        message(FATAL_ERROR "D3D12Helper tests are Windows-only.")
     endif()
 
     set(CMAKE_CXX_STANDARD 17)
@@ -49,22 +50,45 @@ if(NOT TARGET D3D12Helper)
     if(MSVC)
         target_compile_options(D3D12Helper PUBLIC /utf-8 /EHsc)
     endif()
+
+    include(CTest)
+    enable_testing()
 endif()
 
-function(add_d3d12helper_sample target_name)
-    add_executable(${target_name} ${ARGN})
-    target_link_libraries(${target_name} PRIVATE D3D12Helper::D3D12Helper)
+file(GLOB D3D12HELPER_TEST_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_*.cpp"
+)
 
-    if(MSVC)
-        target_compile_options(${target_name} PRIVATE /utf-8 /EHsc)
-    endif()
+add_executable(d3d12helper_tests ${D3D12HELPER_TEST_SOURCES})
+target_include_directories(d3d12helper_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(d3d12helper_tests PRIVATE D3D12Helper::D3D12Helper)
 
-    d3d12helper_copy_dxc_runtime(${target_name})
-endfunction()
+if(MSVC)
+    target_compile_options(d3d12helper_tests PRIVATE /utf-8 /EHsc)
+endif()
 
-add_d3d12helper_sample(D3D12Sample_01_HelloDevice         01_HelloDevice/main.cpp)
-add_d3d12helper_sample(D3D12Sample_02_ComputeGrayscale    02_ComputeGrayscale/main.cpp)
-add_d3d12helper_sample(D3D12Sample_03_HelloTriangle       03_HelloTriangle/main.cpp)
-add_d3d12helper_sample(D3D12Sample_04_ParallelCompute     04_ParallelCompute/main.cpp)
-add_d3d12helper_sample(D3D12Sample_05_BufferCompute       05_BufferCompute/main.cpp)
-add_d3d12helper_sample(D3D12Sample_06_UploadRingStreaming 06_UploadRingStreaming/main.cpp)
+d3d12helper_copy_dxc_runtime(d3d12helper_tests)
+
+set(D3D12HELPER_TEST_SUITES
+    FormatUtil
+    DxgiUtil
+    ThrowIfFailed
+    Barrier
+    Core
+    Fence
+    CommandContext
+    DescriptorAllocator
+    Resource
+    UploadReadback
+    UploadRing
+    ShaderCompiler
+    ComputePipeline
+    GraphicsPipeline
+)
+
+foreach(suite IN LISTS D3D12HELPER_TEST_SUITES)
+    add_test(NAME ${suite} COMMAND d3d12helper_tests ${suite})
+    set_tests_properties(${suite} PROPERTIES
+        WORKING_DIRECTORY "$<TARGET_FILE_DIR:d3d12helper_tests>"
+    )
+endforeach()

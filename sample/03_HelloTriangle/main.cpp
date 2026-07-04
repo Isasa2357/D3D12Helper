@@ -104,7 +104,7 @@ int main() {
         wc.lpfnWndProc   = WndProc;
         wc.hInstance     = hInst;
         wc.lpszClassName = kClassName;
-        wc.hCursor       = LoadCursorW(nullptr, IDC_ARROW);
+        wc.hCursor       = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
         RegisterClassW(&wc);
 
         RECT rc = { 0, 0, static_cast<LONG>(kWidth), static_cast<LONG>(kHeight) };
