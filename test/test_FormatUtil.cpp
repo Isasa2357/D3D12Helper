@@ -31,3 +31,25 @@ TEST(FormatUtil, Typeless) {
     CHECK(FormatUtil::IsTypelessFormat(DXGI_FORMAT_R8G8B8A8_TYPELESS));
     CHECK(!FormatUtil::IsTypelessFormat(DXGI_FORMAT_R8G8B8A8_UNORM));
 }
+
+TEST(FormatUtil, YuvAndPlanarFormats) {
+    CHECK(FormatUtil::IsYuvFormat(DXGI_FORMAT_NV12));
+    CHECK(FormatUtil::IsYuvFormat(DXGI_FORMAT_YUY2));
+    CHECK(!FormatUtil::IsYuvFormat(DXGI_FORMAT_R8G8B8A8_UNORM));
+
+    CHECK(FormatUtil::IsPlanarFormat(DXGI_FORMAT_NV12));
+    CHECK(FormatUtil::IsPlanarFormat(DXGI_FORMAT_P010));
+    CHECK(!FormatUtil::IsPlanarFormat(DXGI_FORMAT_YUY2));
+    CHECK(!FormatUtil::IsPlanarFormat(DXGI_FORMAT_R8G8B8A8_UNORM));
+}
+
+TEST(FormatUtil, PlaneCountAndEvenSize) {
+    CHECK_EQ(FormatUtil::GetKnownPlaneCount(DXGI_FORMAT_UNKNOWN), 0u);
+    CHECK_EQ(FormatUtil::GetKnownPlaneCount(DXGI_FORMAT_R8G8B8A8_UNORM), 1u);
+    CHECK_EQ(FormatUtil::GetKnownPlaneCount(DXGI_FORMAT_NV12), 2u);
+    CHECK_EQ(FormatUtil::GetKnownPlaneCount(DXGI_FORMAT_P010), 2u);
+
+    CHECK(FormatUtil::RequiresEvenSize(DXGI_FORMAT_NV12));
+    CHECK(FormatUtil::RequiresEvenSize(DXGI_FORMAT_P010));
+    CHECK(!FormatUtil::RequiresEvenSize(DXGI_FORMAT_R8G8B8A8_UNORM));
+}

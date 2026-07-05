@@ -28,6 +28,27 @@ TEST(DescriptorAllocator, AllocateAndReset) {
     CHECK_EQ(alloc.GetAllocatedCount(), 0u);
 }
 
+TEST(DescriptorAllocator, AllocateRange) {
+    REQUIRE_CORE(core);
+    D3D12DescriptorAllocator alloc;
+    alloc.Initialize(core->GetDevice(),
+                     D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 8, /*shaderVisible*/ true);
+
+    D3D12DescriptorRange r0 = alloc.AllocateRange(3);
+    CHECK(r0.IsValid());
+    CHECK_EQ(r0.startIndex, 0u);
+    CHECK_EQ(r0.count, 3u);
+    CHECK(r0.shaderVisible);
+    CHECK(r0.gpuStart.ptr != 0);
+    CHECK(r0.Cpu(1).ptr > r0.Cpu(0).ptr);
+    CHECK(r0.Gpu(1).ptr > r0.Gpu(0).ptr);
+
+    D3D12DescriptorRange r1 = alloc.AllocateRange(2);
+    CHECK_EQ(r1.startIndex, 3u);
+    CHECK_EQ(r1.count, 2u);
+    CHECK_EQ(alloc.GetAllocatedCount(), 5u);
+}
+
 TEST(DescriptorAllocator, ExhaustionThrows) {
     REQUIRE_CORE(core);
     D3D12DescriptorAllocator alloc;
@@ -36,6 +57,15 @@ TEST(DescriptorAllocator, ExhaustionThrows) {
     (void)alloc.Allocate();
     (void)alloc.Allocate();
     CHECK_THROWS(alloc.Allocate());       // 容量超過は例外
+}
+
+TEST(DescriptorAllocator, AllocateRangeThrows) {
+    REQUIRE_CORE(core);
+    D3D12DescriptorAllocator alloc;
+    alloc.Initialize(core->GetDevice(),
+                     D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2, true);
+    CHECK_THROWS(alloc.AllocateRange(0));
+    CHECK_THROWS(alloc.AllocateRange(3));
 }
 
 TEST(DescriptorAllocator, RtvNonShaderVisible) {

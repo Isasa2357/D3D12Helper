@@ -74,11 +74,13 @@ set(D3D12HELPER_TEST_SUITES
     DxgiUtil
     ThrowIfFailed
     Barrier
+    Subresource
     Core
     Fence
     CommandContext
     DescriptorAllocator
     Resource
+    Helpers
     UploadReadback
     UploadRing
     ShaderCompiler
