@@ -49,17 +49,19 @@ cmake -S . -B out/build/default -G "Visual Studio 17 2022" -A x64 ^
 cmake --build out/build/default --config Release
 ```
 
+Visual Studio generator の既定構成では、サンプル実行ファイルは `out/build/default/sample/<Config>/` 以下に生成されます。
+
 生成物例:
 
 ```text
-out/build/default/sample/01_HelloDevice/Release/01_HelloDevice.exe
-out/build/default/sample/02_ComputeGrayscale/Release/02_ComputeGrayscale.exe
-out/build/default/sample/03_HelloTriangle/Release/03_HelloTriangle.exe
-out/build/default/sample/04_ParallelCompute/Release/04_ParallelCompute.exe
-out/build/default/sample/05_BufferCompute/Release/05_BufferCompute.exe
-out/build/default/sample/06_UploadRingStreaming/Release/06_UploadRingStreaming.exe
-out/build/default/sample/07_ProcessingFusedConvertResize/Release/07_ProcessingFusedConvertResize.exe
-out/build/default/sample/08_ProcessingP010Rgba16/Release/08_ProcessingP010Rgba16.exe
+out/build/default/sample/Release/D3D12Sample_01_HelloDevice.exe
+out/build/default/sample/Release/D3D12Sample_02_ComputeGrayscale.exe
+out/build/default/sample/Release/D3D12Sample_03_HelloTriangle.exe
+out/build/default/sample/Release/D3D12Sample_04_ParallelCompute.exe
+out/build/default/sample/Release/D3D12Sample_05_BufferCompute.exe
+out/build/default/sample/Release/D3D12Sample_06_UploadRingStreaming.exe
+out/build/default/sample/Release/D3D12Sample_07_ProcessingFusedConvertResize.exe
+out/build/default/sample/Release/D3D12Sample_08_ProcessingP010Rgba16.exe
 ```
 
 構成や generator によって出力パスは変わります。Visual Studio generator の場合は `Debug` / `Release` などの構成別ディレクトリが作られます。
@@ -69,22 +71,22 @@ out/build/default/sample/08_ProcessingP010Rgba16/Release/08_ProcessingP010Rgba16
 ## 実行
 
 ```bat
-out\build\default\sample\01_HelloDevice\Release\01_HelloDevice.exe
-out\build\default\sample\02_ComputeGrayscale\Release\02_ComputeGrayscale.exe
-out\build\default\sample\07_ProcessingFusedConvertResize\Release\07_ProcessingFusedConvertResize.exe
-out\build\default\sample\08_ProcessingP010Rgba16\Release\08_ProcessingP010Rgba16.exe
+out\build\default\sample\Release\D3D12Sample_01_HelloDevice.exe
+out\build\default\sample\Release\D3D12Sample_02_ComputeGrayscale.exe
+out\build\default\sample\Release\D3D12Sample_07_ProcessingFusedConvertResize.exe
+out\build\default\sample\Release\D3D12Sample_08_ProcessingP010Rgba16.exe
 ```
 
 `RESULT: OK` が出るサンプルは、GPU 実行・読み戻し・検証まで完了しています。
 
 その他のサンプル:
 
-- `03_HelloTriangle.exe` … ウィンドウが開き、赤・緑・青の頂点色が補間された三角形が表示されます。ESC か閉じるボタンで終了。GUI 環境が必要です。
-- `04_ParallelCompute.exe` … 複数スレッドが並列にコマンドを記録し、各スレッドの出力が正しいか検証します。
-- `05_BufferCompute.exe` … GPU で SAXPY を計算し、CPU 参照と一致するか検証します。
-- `06_UploadRingStreaming.exe` … 120 フレームぶんのテクスチャ更新をリングで流し、リング使用量を表示します。
-- `07_ProcessingFusedConvertResize.exe` … NV12 → RGBA resize を 1 dispatch で実行し、CPU readback で検証します。
-- `08_ProcessingP010Rgba16.exe` … P010 / RGBA16F の Processing API 使用例を検証します。
+- `D3D12Sample_03_HelloTriangle.exe` … ウィンドウが開き、赤・緑・青の頂点色が補間された三角形が表示されます。ESC か閉じるボタンで終了。GUI 環境が必要です。
+- `D3D12Sample_04_ParallelCompute.exe` … 複数スレッドが並列にコマンドを記録し、各スレッドの出力が正しいか検証します。
+- `D3D12Sample_05_BufferCompute.exe` … GPU で SAXPY を計算し、CPU 参照と一致するか検証します。
+- `D3D12Sample_06_UploadRingStreaming.exe` … 120 フレームぶんのテクスチャ更新をリングで流し、リング使用量を表示します。
+- `D3D12Sample_07_ProcessingFusedConvertResize.exe` … NV12 → RGBA resize を 1 dispatch で実行し、CPU readback で検証します。
+- `D3D12Sample_08_ProcessingP010Rgba16.exe` … P010 / RGBA16F の Processing API 使用例を検証します。
 
 ---
 
