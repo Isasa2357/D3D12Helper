@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>
+#include <utility>
 
 using namespace D3D12CoreLib;
 
@@ -27,6 +28,15 @@ TEST(GraphicsPipeline, PipelineDefaults) {
 
     CHECK(PipelineDefaults::DepthDisabled().DepthEnable == FALSE);
     CHECK(PipelineDefaults::DepthDefault().DepthEnable == TRUE);
+}
+
+TEST(GraphicsPipeline, BindRejectsUninitializedPipeline) {
+    REQUIRE_CORE(core);
+    D3D12CommandContext ctx = core->CreateDirectContext();
+    ctx.Reset();
+    D3D12GraphicsPipeline pipeline;
+    CHECK_THROWS(pipeline.Bind(ctx));
+    ctx.Close();
 }
 
 namespace {
@@ -67,7 +77,7 @@ TEST(GraphicsPipeline, OffscreenDrawsTriangle) {
     D3D12DescriptorAllocator rtvAlloc;
     rtvAlloc.Initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 1, false);
     D3D12DescriptorHandle rtv = rtvAlloc.Allocate();
-    device->CreateRenderTargetView(rt.Get(), nullptr, rtv.cpu);
+    CreateTexture2DRtv(*core, rt, rtv.cpu);
 
     // パイプライン
     ShaderBytecode vs = CompileShaderFromSource_Dxc(kTriHlsl, "VSMain", "vs_6_0");
@@ -120,8 +130,7 @@ TEST(GraphicsPipeline, OffscreenDrawsTriangle) {
     cl->ClearRenderTargetView(rtv.cpu, clear, 0, nullptr);
     cl->RSSetViewports(1, &vp);
     cl->RSSetScissorRects(1, &sc);
-    cl->SetGraphicsRootSignature(pipeline.GetRootSignature());
-    cl->SetPipelineState(pipeline.GetPipelineState());
+    pipeline.Bind(ctx);
     cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     cl->IASetVertexBuffers(0, 1, &vbv);
     cl->DrawInstanced(3, 1, 0, 0);

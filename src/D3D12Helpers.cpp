@@ -8,6 +8,8 @@
 #include <cstring>
 #include <stdexcept>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace D3D12CoreLib {
 
@@ -23,19 +25,127 @@ D3D12_HEAP_PROPERTIES MakeHeapProps(D3D12_HEAP_TYPE type) {
     return hp;
 }
 
-UINT BytesPerPixelChecked(DXGI_FORMAT format) {
-    const UINT bpp = FormatUtil::BytesPerPixel(format);
-    if (bpp == 0) {
-        throw std::runtime_error(
-            "D3D12Helpers: unsupported / block-compressed format for from-memory upload");
+UINT64 AlignUp(UINT64 value, UINT64 alignment) noexcept {
+    return (value + alignment - 1) & ~(alignment - 1);
+}
+
+UINT64 AlignConstantBufferSize(UINT64 sizeBytes) {
+    if (sizeBytes == 0) {
+        throw std::runtime_error("CreateConstantBuffer: sizeBytes must be > 0");
     }
-    return bpp;
+    return AlignUp(sizeBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 }
 
 void CheckCpuDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, const char* name) {
     if (cpuHandle.ptr == 0) {
         throw std::runtime_error(std::string(name) + ": invalid CPU descriptor handle");
     }
+}
+
+void CheckBufferResource(const D3D12Resource& buffer, const char* name) {
+    if (!buffer.Get()) {
+        throw std::runtime_error(std::string(name) + ": null buffer");
+    }
+    if (buffer.GetDesc().Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
+        throw std::runtime_error(std::string(name) + ": resource is not a buffer");
+    }
+}
+
+void CheckTexture2DResource(const D3D12Resource& texture, const char* name) {
+    if (!texture.Get()) {
+        throw std::runtime_error(std::string(name) + ": null texture");
+    }
+    if (texture.GetDesc().Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+        throw std::runtime_error(std::string(name) + ": resource is not a Texture2D");
+    }
+}
+
+UINT BytesPerElementForTypedBuffer(DXGI_FORMAT format, const char* name) {
+    const UINT bytes = FormatUtil::BytesPerPixel(format);
+    if (bytes == 0) {
+        throw std::runtime_error(std::string(name) + ": unsupported typed buffer format");
+    }
+    return bytes;
+}
+
+UINT ResolveBufferViewStride(const D3D12Resource& buffer, UINT firstElement,
+                             UINT numElements, UINT structureByteStride,
+                             DXGI_FORMAT format, const char* name) {
+    if (numElements == 0) {
+        throw std::runtime_error(std::string(name) + ": numElements must be > 0");
+    }
+
+    const D3D12_RESOURCE_DESC desc = buffer.GetDesc();
+    const UINT64 lastElement = static_cast<UINT64>(firstElement) + numElements;
+
+    if (format != DXGI_FORMAT_UNKNOWN) {
+        if (structureByteStride != 0) {
+            throw std::runtime_error(std::string(name) + ": typed buffer view requires structureByteStride == 0");
+        }
+        const UINT bytes = BytesPerElementForTypedBuffer(format, name);
+        if (lastElement > desc.Width / bytes) {
+            throw std::runtime_error(std::string(name) + ": typed buffer view exceeds buffer size");
+        }
+        return 0;
+    }
+
+    if (structureByteStride == 0) {
+        throw std::runtime_error(std::string(name) +
+            ": structured buffer view requires explicit structureByteStride");
+    }
+
+    if (lastElement > desc.Width / structureByteStride) {
+        throw std::runtime_error(std::string(name) + ": structured buffer view exceeds buffer size");
+    }
+    return structureByteStride;
+}
+
+UINT GetTextureSubresourceCount(const D3D12_RESOURCE_DESC& desc) {
+    if (desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+        throw std::runtime_error("D3D12Helpers: only Texture2D upload is supported");
+    }
+    const UINT planeCount = FormatUtil::GetKnownPlaneCount(desc.Format);
+    if (planeCount == 0) {
+        throw std::runtime_error("D3D12Helpers: unknown texture format for subresource count");
+    }
+    return static_cast<UINT>(desc.MipLevels) * static_cast<UINT>(desc.DepthOrArraySize) * planeCount;
+}
+
+void ValidateSubresourceRange(const D3D12_RESOURCE_DESC& desc,
+                              UINT firstSubresource,
+                              UINT subresourceCount) {
+    if (subresourceCount == 0) {
+        throw std::runtime_error("D3D12Helpers: subresourceCount must be > 0");
+    }
+    const UINT totalSubresources = GetTextureSubresourceCount(desc);
+    if (firstSubresource >= totalSubresources ||
+        subresourceCount > totalSubresources - firstSubresource) {
+        throw std::runtime_error("D3D12Helpers: subresource range is out of bounds");
+    }
+}
+
+void ValidateSingleSubresourceTexture(const D3D12_RESOURCE_DESC& desc, const char* name) {
+    if (desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+        throw std::runtime_error(std::string(name) + ": only Texture2D is supported");
+    }
+    if (desc.MipLevels != 1 || desc.DepthOrArraySize != 1 ||
+        FormatUtil::GetKnownPlaneCount(desc.Format) != 1) {
+        throw std::runtime_error(std::string(name) +
+            ": texture has multiple subresources; use RecordUploadTextureSubresources");
+    }
+}
+
+UINT BytesPerPixelChecked(DXGI_FORMAT format) {
+    if (FormatUtil::IsPlanarFormat(format)) {
+        throw std::runtime_error(
+            "D3D12Helpers: planar formats require RecordUploadTextureSubresources");
+    }
+    const UINT bpp = FormatUtil::BytesPerPixel(format);
+    if (bpp == 0) {
+        throw std::runtime_error(
+            "D3D12Helpers: unsupported / block-compressed format for from-memory upload");
+    }
+    return bpp;
 }
 
 // 1サブリソース分の footprint を取得する。
@@ -53,6 +163,32 @@ SingleFootprint QueryFootprint(ID3D12Device* device, const D3D12_RESOURCE_DESC& 
     return fp;
 }
 
+struct FootprintSet {
+    std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts;
+    std::vector<UINT> numRows;
+    std::vector<UINT64> rowSizes;
+    UINT64 totalBytes = 0;
+};
+
+FootprintSet QueryFootprints(ID3D12Device* device, const D3D12_RESOURCE_DESC& desc,
+                             UINT firstSubresource, UINT subresourceCount,
+                             UINT64 baseOffset = 0) {
+    FootprintSet fp;
+    fp.layouts.resize(subresourceCount);
+    fp.numRows.resize(subresourceCount);
+    fp.rowSizes.resize(subresourceCount);
+    device->GetCopyableFootprints(
+        &desc,
+        firstSubresource,
+        subresourceCount,
+        baseOffset,
+        fp.layouts.data(),
+        fp.numRows.data(),
+        fp.rowSizes.data(),
+        &fp.totalBytes);
+    return fp;
+}
+
 // upload(mapped) へ src を行ピッチを合わせて書き込む。
 void CopyRowsToUpload(uint8_t* mapped, const SingleFootprint& fp,
                       const void* src, UINT effectiveSrcPitch) {
@@ -64,6 +200,45 @@ void CopyRowsToUpload(uint8_t* mapped, const SingleFootprint& fp,
                     s + static_cast<size_t>(y) * effectiveSrcPitch,
                     static_cast<size_t>(fp.rowSize));
     }
+}
+
+void CopySubresourceToUpload(uint8_t* mappedBase,
+                             const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& layout,
+                             UINT numRows,
+                             UINT64 rowSize,
+                             const D3D12TextureSubresourceData& src,
+                             UINT subresourceIndexForError) {
+    if (!src.data) {
+        throw std::runtime_error("RecordUploadTextureSubresources: null subresource data");
+    }
+
+    const UINT64 srcRowPitch = (src.rowPitch != 0) ? src.rowPitch : rowSize;
+    if (srcRowPitch < rowSize) {
+        throw std::runtime_error("RecordUploadTextureSubresources: src rowPitch is smaller than rowSize");
+    }
+
+    const UINT depth = layout.Footprint.Depth;
+    const UINT64 srcSlicePitch = (src.slicePitch != 0)
+        ? src.slicePitch
+        : srcRowPitch * numRows;
+    if (srcSlicePitch < srcRowPitch * numRows) {
+        throw std::runtime_error("RecordUploadTextureSubresources: src slicePitch is too small");
+    }
+
+    const auto* srcBytes = static_cast<const uint8_t*>(src.data);
+    uint8_t* dstBytes = mappedBase + layout.Offset;
+    const UINT64 dstRowPitch = layout.Footprint.RowPitch;
+    const UINT64 dstSlicePitch = dstRowPitch * numRows;
+
+    for (UINT z = 0; z < depth; ++z) {
+        for (UINT y = 0; y < numRows; ++y) {
+            std::memcpy(
+                dstBytes + static_cast<size_t>(z * dstSlicePitch + y * dstRowPitch),
+                srcBytes + static_cast<size_t>(z * srcSlicePitch + y * srcRowPitch),
+                static_cast<size_t>(rowSize));
+        }
+    }
+    (void)subresourceIndexForError;
 }
 
 void RecordCopyAndTransition(D3D12CommandContext& ctx,
@@ -90,12 +265,54 @@ void RecordCopyAndTransition(D3D12CommandContext& ctx,
     }
 }
 
+void RecordCopySubresourcesAndTransition(D3D12CommandContext& ctx,
+                                         D3D12Resource& dstTexture,
+                                         ID3D12Resource* uploadResource,
+                                         const FootprintSet& fp,
+                                         UINT firstSubresource,
+                                         D3D12_RESOURCE_STATES finalState) {
+    auto* cmd = ctx.GetCommandList();
+    for (UINT i = 0; i < static_cast<UINT>(fp.layouts.size()); ++i) {
+        D3D12_TEXTURE_COPY_LOCATION dstLoc = {};
+        dstLoc.pResource        = dstTexture.Get();
+        dstLoc.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dstLoc.SubresourceIndex = firstSubresource + i;
+
+        D3D12_TEXTURE_COPY_LOCATION srcLoc = {};
+        srcLoc.pResource       = uploadResource;
+        srcLoc.Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        srcLoc.PlacedFootprint = fp.layouts[i];
+
+        cmd->CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, nullptr);
+    }
+
+    if (finalState != D3D12_RESOURCE_STATE_COPY_DEST) {
+        ctx.ResourceBarrier(
+            MakeTransitionBarrier(dstTexture.Get(),
+                                  D3D12_RESOURCE_STATE_COPY_DEST, finalState));
+    }
+}
+
+void CopySubresourcesToMappedUpload(uint8_t* mappedBase,
+                                    const FootprintSet& fp,
+                                    const D3D12TextureSubresourceData* subresources) {
+    for (UINT i = 0; i < static_cast<UINT>(fp.layouts.size()); ++i) {
+        CopySubresourceToUpload(mappedBase, fp.layouts[i], fp.numRows[i], fp.rowSizes[i],
+                                subresources[i], i);
+    }
+}
+
 } // unnamed namespace
 
 // ==========================================================================
 
 D3D12Resource CreateBuffer(D3D12Core& core, UINT64 sizeBytes, D3D12_HEAP_TYPE heapType,
-                           D3D12_RESOURCE_STATES initialState, D3D12_RESOURCE_FLAGS flags) {
+                           D3D12_RESOURCE_STATES initialState, D3D12_RESOURCE_FLAGS flags,
+                           D3D12_HEAP_FLAGS heapFlags) {
+    if (sizeBytes == 0) {
+        throw std::runtime_error("CreateBuffer: sizeBytes must be > 0");
+    }
+
     D3D12_RESOURCE_DESC desc = {};
     desc.Dimension        = D3D12_RESOURCE_DIMENSION_BUFFER;
     desc.Width            = sizeBytes;
@@ -111,13 +328,24 @@ D3D12Resource CreateBuffer(D3D12Core& core, UINT64 sizeBytes, D3D12_HEAP_TYPE he
 
     ComPtr<ID3D12Resource> resource;
     D3D12CORE_THROW_IF_FAILED(core.GetDevice()->CreateCommittedResource(
-        &hp, D3D12_HEAP_FLAG_NONE, &desc, initialState, nullptr, IID_PPV_ARGS(&resource)));
+        &hp, heapFlags, &desc, initialState, nullptr, IID_PPV_ARGS(&resource)));
     return D3D12Resource(std::move(resource), initialState);
 }
 
 D3D12Resource CreateTexture2D(D3D12Core& core, UINT width, UINT height, DXGI_FORMAT format,
                               D3D12_RESOURCE_STATES initialState, D3D12_RESOURCE_FLAGS flags,
-                              UINT16 arraySize, UINT16 mipLevels) {
+                              UINT16 arraySize, UINT16 mipLevels,
+                              D3D12_HEAP_FLAGS heapFlags) {
+    if (width == 0 || height == 0) {
+        throw std::runtime_error("CreateTexture2D: width and height must be > 0");
+    }
+    if (arraySize == 0 || mipLevels == 0) {
+        throw std::runtime_error("CreateTexture2D: arraySize and mipLevels must be > 0");
+    }
+    if (FormatUtil::RequiresEvenSize(format) && ((width % 2) != 0 || (height % 2) != 0)) {
+        throw std::runtime_error("CreateTexture2D: format requires even width and height");
+    }
+
     D3D12_RESOURCE_DESC desc = {};
     desc.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     desc.Width            = width;
@@ -133,13 +361,66 @@ D3D12Resource CreateTexture2D(D3D12Core& core, UINT width, UINT height, DXGI_FOR
 
     ComPtr<ID3D12Resource> resource;
     D3D12CORE_THROW_IF_FAILED(core.GetDevice()->CreateCommittedResource(
-        &hp, D3D12_HEAP_FLAG_NONE, &desc, initialState, nullptr, IID_PPV_ARGS(&resource)));
+        &hp, heapFlags, &desc, initialState, nullptr, IID_PPV_ARGS(&resource)));
     return D3D12Resource(std::move(resource), initialState);
 }
 
+D3D12Resource CreateStructuredBuffer(D3D12Core& core, UINT elementCount, UINT elementStride,
+                                     D3D12_HEAP_TYPE heapType,
+                                     D3D12_RESOURCE_STATES initialState,
+                                     D3D12_RESOURCE_FLAGS flags,
+                                     D3D12_HEAP_FLAGS heapFlags) {
+    if (elementCount == 0) {
+        throw std::runtime_error("CreateStructuredBuffer: elementCount must be > 0");
+    }
+    if (elementStride == 0) {
+        throw std::runtime_error("CreateStructuredBuffer: elementStride must be > 0");
+    }
+    const UINT64 sizeBytes = static_cast<UINT64>(elementCount) * elementStride;
+    return CreateBuffer(core, sizeBytes, heapType, initialState, flags, heapFlags);
+}
+
+D3D12Resource CreateConstantBuffer(D3D12Core& core, UINT64 sizeBytes,
+                                   D3D12_HEAP_TYPE heapType,
+                                   D3D12_RESOURCE_STATES initialState,
+                                   D3D12_HEAP_FLAGS heapFlags) {
+    return CreateBuffer(core,
+                        AlignConstantBufferSize(sizeBytes),
+                        heapType,
+                        initialState,
+                        D3D12_RESOURCE_FLAG_NONE,
+                        heapFlags);
+}
+
+D3D12Resource CreateSharedTexture2D(D3D12Core& core, UINT width, UINT height,
+                                    DXGI_FORMAT format,
+                                    D3D12_RESOURCE_STATES initialState,
+                                    D3D12_RESOURCE_FLAGS flags,
+                                    UINT16 arraySize, UINT16 mipLevels) {
+    return CreateTexture2D(core,
+                           width,
+                           height,
+                           format,
+                           initialState,
+                           flags,
+                           arraySize,
+                           mipLevels,
+                           D3D12_HEAP_FLAG_SHARED);
+}
+
 UINT64 GetRequiredUploadSize(D3D12Core& core, const D3D12Resource& dstTexture) {
+    CheckTexture2DResource(dstTexture, "GetRequiredUploadSize");
     const D3D12_RESOURCE_DESC desc = dstTexture.GetDesc();
+    ValidateSingleSubresourceTexture(desc, "GetRequiredUploadSize");
     return QueryFootprint(core.GetDevice(), desc).totalBytes;
+}
+
+UINT64 GetRequiredUploadSize(D3D12Core& core, const D3D12Resource& dstTexture,
+                             UINT firstSubresource, UINT subresourceCount) {
+    CheckTexture2DResource(dstTexture, "GetRequiredUploadSize");
+    const D3D12_RESOURCE_DESC desc = dstTexture.GetDesc();
+    ValidateSubresourceRange(desc, firstSubresource, subresourceCount);
+    return QueryFootprints(core.GetDevice(), desc, firstSubresource, subresourceCount).totalBytes;
 }
 
 D3D12Resource CreateTexture2DFromMemory(D3D12Core& core, const void* data,
@@ -147,7 +428,6 @@ D3D12Resource CreateTexture2DFromMemory(D3D12Core& core, const void* data,
                                         UINT srcRowPitch, D3D12_RESOURCE_STATES finalState) {
     if (!data) throw std::runtime_error("CreateTexture2DFromMemory: null data");
 
-    ID3D12Device* device = core.GetDevice();
     const UINT bpp = BytesPerPixelChecked(format);
     const UINT effectiveSrcPitch = (srcRowPitch != 0) ? srcRowPitch : (width * bpp);
 
@@ -156,11 +436,12 @@ D3D12Resource CreateTexture2DFromMemory(D3D12Core& core, const void* data,
                                         D3D12_RESOURCE_STATE_COPY_DEST);
 
     const D3D12_RESOURCE_DESC desc = tex.GetDesc();
-    const SingleFootprint fp = QueryFootprint(device, desc);
+    ValidateSingleSubresourceTexture(desc, "CreateTexture2DFromMemory");
+    const SingleFootprint fp = QueryFootprint(core.GetDevice(), desc);
 
     // Upload Buffer 確保（このスコープ内のローカル: 末尾の WaitIdle 後に安全に破棄）
     D3D12UploadBuffer upload;
-    upload.Initialize(device, fp.totalBytes);
+    upload.Initialize(core.GetDevice(), fp.totalBytes);
     CopyRowsToUpload(static_cast<uint8_t*>(upload.Map()), fp, data, effectiveSrcPitch);
 
     // Copy を Direct Queue で実行（COPY_DEST→任意状態の遷移が必要なため Direct を使う）
@@ -211,12 +492,13 @@ void RecordUploadTexture2D(D3D12Core& core, D3D12CommandContext& ctx,
                            UINT srcRowPitch, D3D12_RESOURCE_STATES finalState) {
     if (!data) throw std::runtime_error("RecordUploadTexture2D: null data");
 
-    ID3D12Device* device = core.GetDevice();
     const UINT bpp = BytesPerPixelChecked(format);
     const UINT effectiveSrcPitch = (srcRowPitch != 0) ? srcRowPitch : (width * bpp);
 
+    CheckTexture2DResource(dstTexture, "RecordUploadTexture2D");
     const D3D12_RESOURCE_DESC desc = dstTexture.GetDesc();
-    const SingleFootprint fp = QueryFootprint(device, desc);
+    ValidateSingleSubresourceTexture(desc, "RecordUploadTexture2D");
+    const SingleFootprint fp = QueryFootprint(core.GetDevice(), desc);
 
     if (upload.GetSizeBytes() < fp.totalBytes) {
         throw std::runtime_error("RecordUploadTexture2D: upload buffer too small "
@@ -228,36 +510,81 @@ void RecordUploadTexture2D(D3D12Core& core, D3D12CommandContext& ctx,
     dstTexture.SetState(finalState);
 }
 
-// ==========================================================================
-// Ring 版
-// ==========================================================================
 void RecordUploadTexture2D(D3D12Core& core, D3D12CommandContext& ctx,
                            D3D12Resource& dstTexture, D3D12UploadRing& ring,
                            const void* data, UINT width, UINT height, DXGI_FORMAT format,
                            UINT srcRowPitch, D3D12_RESOURCE_STATES finalState) {
     if (!data) throw std::runtime_error("RecordUploadTexture2D(Ring): null data");
 
-    ID3D12Device* device = core.GetDevice();
     const UINT bpp = BytesPerPixelChecked(format);
     const UINT effectiveSrcPitch = (srcRowPitch != 0) ? srcRowPitch : (width * bpp);
 
-    // BaseOffset=0 で footprint を取得（サイズ計算用）。
+    CheckTexture2DResource(dstTexture, "RecordUploadTexture2D(Ring)");
     const D3D12_RESOURCE_DESC desc = dstTexture.GetDesc();
-    const SingleFootprint fp = QueryFootprint(device, desc);
+    ValidateSingleSubresourceTexture(desc, "RecordUploadTexture2D(Ring)");
+    const SingleFootprint fp = QueryFootprint(core.GetDevice(), desc);
 
-    // Ring から確保（D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT=512 でアラインされる）。
     D3D12UploadRing::Allocation alloc =
         ring.Allocate(fp.totalBytes, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
 
-    // alloc.cpuPtr（Ring 内の確保先頭）に行ピッチを合わせてコピー。
-    // fp.layout.Offset は 0 なので、cpuPtr + 0 から書き始める。
     CopyRowsToUpload(static_cast<uint8_t*>(alloc.cpuPtr), fp, data, effectiveSrcPitch);
 
-    // CopyTextureRegion 用に Offset を Ring 内の実際位置に差し替える。
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT ringLayout = fp.layout;
     ringLayout.Offset = alloc.offset;
 
     RecordCopyAndTransition(ctx, dstTexture, alloc.resource, ringLayout, finalState);
+    dstTexture.SetState(finalState);
+}
+
+void RecordUploadTextureSubresources(D3D12Core& core, D3D12CommandContext& ctx,
+                                     D3D12Resource& dstTexture,
+                                     D3D12UploadBuffer& upload,
+                                     const D3D12TextureSubresourceData* subresources,
+                                     UINT firstSubresource,
+                                     UINT subresourceCount,
+                                     D3D12_RESOURCE_STATES finalState) {
+    if (!subresources) {
+        throw std::runtime_error("RecordUploadTextureSubresources: null subresources");
+    }
+    CheckTexture2DResource(dstTexture, "RecordUploadTextureSubresources");
+    const D3D12_RESOURCE_DESC desc = dstTexture.GetDesc();
+    ValidateSubresourceRange(desc, firstSubresource, subresourceCount);
+
+    FootprintSet fp = QueryFootprints(core.GetDevice(), desc, firstSubresource, subresourceCount);
+    if (upload.GetSizeBytes() < fp.totalBytes) {
+        throw std::runtime_error("RecordUploadTextureSubresources: upload buffer too small");
+    }
+
+    CopySubresourcesToMappedUpload(static_cast<uint8_t*>(upload.Map()), fp, subresources);
+    RecordCopySubresourcesAndTransition(ctx, dstTexture, upload.Get(), fp, firstSubresource, finalState);
+    dstTexture.SetState(finalState);
+}
+
+void RecordUploadTextureSubresources(D3D12Core& core, D3D12CommandContext& ctx,
+                                     D3D12Resource& dstTexture,
+                                     D3D12UploadRing& ring,
+                                     const D3D12TextureSubresourceData* subresources,
+                                     UINT firstSubresource,
+                                     UINT subresourceCount,
+                                     D3D12_RESOURCE_STATES finalState) {
+    if (!subresources) {
+        throw std::runtime_error("RecordUploadTextureSubresources(Ring): null subresources");
+    }
+    CheckTexture2DResource(dstTexture, "RecordUploadTextureSubresources(Ring)");
+    const D3D12_RESOURCE_DESC desc = dstTexture.GetDesc();
+    ValidateSubresourceRange(desc, firstSubresource, subresourceCount);
+
+    FootprintSet fp = QueryFootprints(core.GetDevice(), desc, firstSubresource, subresourceCount);
+    D3D12UploadRing::Allocation alloc =
+        ring.Allocate(fp.totalBytes, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+
+    for (auto& layout : fp.layouts) {
+        layout.Offset += alloc.offset;
+    }
+
+    uint8_t* ringBase = static_cast<uint8_t*>(alloc.cpuPtr) - static_cast<size_t>(alloc.offset);
+    CopySubresourcesToMappedUpload(ringBase, fp, subresources);
+    RecordCopySubresourcesAndTransition(ctx, dstTexture, alloc.resource, fp, firstSubresource, finalState);
     dstTexture.SetState(finalState);
 }
 
@@ -320,7 +647,7 @@ void CreateDsv(D3D12Core& core, ID3D12Resource* resource,
 
 void CreateTexture2DSrv(D3D12Core& core, const D3D12Resource& texture,
                         D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, DXGI_FORMAT format) {
-    if (!texture.Get()) throw std::runtime_error("CreateTexture2DSrv: null texture");
+    CheckTexture2DResource(texture, "CreateTexture2DSrv");
 
     const D3D12_RESOURCE_DESC desc = texture.GetDesc();
 
@@ -336,7 +663,7 @@ void CreateTexture2DSrv(D3D12Core& core, const D3D12Resource& texture,
 void CreateTexture2DUav(D3D12Core& core, const D3D12Resource& texture,
                         D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, DXGI_FORMAT format,
                         UINT mipSlice) {
-    if (!texture.Get()) throw std::runtime_error("CreateTexture2DUav: null texture");
+    CheckTexture2DResource(texture, "CreateTexture2DUav");
 
     const D3D12_RESOURCE_DESC desc = texture.GetDesc();
 
@@ -346,6 +673,109 @@ void CreateTexture2DUav(D3D12Core& core, const D3D12Resource& texture,
     uavDesc.Texture2D.MipSlice = mipSlice;
 
     CreateUav(core, texture.Get(), uavDesc, cpuHandle);
+}
+
+void CreateBufferSrv(D3D12Core& core, const D3D12Resource& buffer,
+                     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+                     UINT firstElement, UINT numElements,
+                     UINT structureByteStride, DXGI_FORMAT format) {
+    CheckBufferResource(buffer, "CreateBufferSrv");
+    const UINT stride = ResolveBufferViewStride(buffer, firstElement, numElements,
+                                               structureByteStride, format,
+                                               "CreateBufferSrv");
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Format = format;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Buffer.FirstElement = firstElement;
+    srvDesc.Buffer.NumElements = numElements;
+    srvDesc.Buffer.StructureByteStride = stride;
+    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+
+    CreateSrv(core, buffer.Get(), srvDesc, cpuHandle);
+}
+
+void CreateBufferUav(D3D12Core& core, const D3D12Resource& buffer,
+                     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+                     UINT firstElement, UINT numElements,
+                     UINT structureByteStride, DXGI_FORMAT format,
+                     ID3D12Resource* counterResource) {
+    CheckBufferResource(buffer, "CreateBufferUav");
+    const UINT stride = ResolveBufferViewStride(buffer, firstElement, numElements,
+                                               structureByteStride, format,
+                                               "CreateBufferUav");
+
+    D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+    uavDesc.Format = format;
+    uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+    uavDesc.Buffer.FirstElement = firstElement;
+    uavDesc.Buffer.NumElements = numElements;
+    uavDesc.Buffer.StructureByteStride = stride;
+    uavDesc.Buffer.CounterOffsetInBytes = 0;
+    uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+
+    CreateUav(core, buffer.Get(), uavDesc, cpuHandle, counterResource);
+}
+
+void CreateConstantBufferView(D3D12Core& core, const D3D12Resource& buffer,
+                              D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+                              UINT64 byteOffset, UINT sizeBytes) {
+    CheckBufferResource(buffer, "CreateConstantBufferView");
+    CheckCpuDescriptor(cpuHandle, "CreateConstantBufferView");
+
+    if ((byteOffset % D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT) != 0) {
+        throw std::runtime_error("CreateConstantBufferView: byteOffset must be 256-byte aligned");
+    }
+
+    const D3D12_RESOURCE_DESC desc = buffer.GetDesc();
+    if (byteOffset >= desc.Width) {
+        throw std::runtime_error("CreateConstantBufferView: byteOffset is out of range");
+    }
+
+    UINT64 resolvedSize = (sizeBytes != 0) ? sizeBytes : (desc.Width - byteOffset);
+    if ((resolvedSize % D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT) != 0) {
+        throw std::runtime_error("CreateConstantBufferView: sizeBytes must be 256-byte aligned");
+    }
+    if (byteOffset + resolvedSize > desc.Width) {
+        throw std::runtime_error("CreateConstantBufferView: view exceeds buffer size");
+    }
+    if (resolvedSize > 0xffffffffull) {
+        throw std::runtime_error("CreateConstantBufferView: sizeBytes is too large");
+    }
+
+    D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+    cbvDesc.BufferLocation = buffer.Get()->GetGPUVirtualAddress() + byteOffset;
+    cbvDesc.SizeInBytes = static_cast<UINT>(resolvedSize);
+    core.GetDevice()->CreateConstantBufferView(&cbvDesc, cpuHandle);
+}
+
+void CreateTexture2DRtv(D3D12Core& core, const D3D12Resource& texture,
+                        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+                        DXGI_FORMAT format, UINT mipSlice) {
+    CheckTexture2DResource(texture, "CreateTexture2DRtv");
+    const D3D12_RESOURCE_DESC desc = texture.GetDesc();
+
+    D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+    rtvDesc.Format = (format == DXGI_FORMAT_UNKNOWN) ? desc.Format : format;
+    rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+    rtvDesc.Texture2D.MipSlice = mipSlice;
+    rtvDesc.Texture2D.PlaneSlice = 0;
+    CreateRtv(core, texture.Get(), rtvDesc, cpuHandle);
+}
+
+void CreateTexture2DDsv(D3D12Core& core, const D3D12Resource& texture,
+                        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+                        DXGI_FORMAT format, UINT mipSlice) {
+    CheckTexture2DResource(texture, "CreateTexture2DDsv");
+    const D3D12_RESOURCE_DESC desc = texture.GetDesc();
+
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+    dsvDesc.Format = (format == DXGI_FORMAT_UNKNOWN) ? desc.Format : format;
+    dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+    dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+    dsvDesc.Texture2D.MipSlice = mipSlice;
+    CreateDsv(core, texture.Get(), dsvDesc, cpuHandle);
 }
 
 // ===========================================================================

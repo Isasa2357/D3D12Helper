@@ -24,20 +24,45 @@ D3D12Resource CreateBuffer(
     UINT64 sizeBytes,
     D3D12_HEAP_TYPE heapType,
     D3D12_RESOURCE_STATES initialState,
-    D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
+    D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE,
+    D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_NONE);
 
 D3D12Resource CreateTexture2D(
     D3D12Core& core,
     UINT width, UINT height, DXGI_FORMAT format,
     D3D12_RESOURCE_STATES initialState,
     D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE,
+    UINT16 arraySize = 1, UINT16 mipLevels = 1,
+    D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_NONE);
+
+D3D12Resource CreateStructuredBuffer(
+    D3D12Core& core,
+    UINT elementCount,
+    UINT elementStride,
+    D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT,
+    D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON,
+    D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+    D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_NONE);
+
+D3D12Resource CreateConstantBuffer(
+    D3D12Core& core,
+    UINT64 sizeBytes,
+    D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_UPLOAD,
+    D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_GENERIC_READ,
+    D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_NONE);
+
+D3D12Resource CreateSharedTexture2D(
+    D3D12Core& core,
+    UINT width, UINT height, DXGI_FORMAT format,
+    D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON,
+    D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
     UINT16 arraySize = 1, UINT16 mipLevels = 1);
 
 // --------------------------------------------------------------------------
 // CPU 配列 → Texture（同期）
-//   内部で Upload Buffer 確保 → Copy → GPU 完了待ち までを行う。
-//   待つので初期化・単発用。高 fps のホットパスでは RecordUploadTexture2D を使う。
-//   戻り値テクスチャの状態は finalState。
+//   単一 subresource の 2D Texture 用。
+//   planar / mipmapped / array texture など複数 subresource を持つ texture には
+//   RecordUploadTextureSubresources を使うこと。
 // --------------------------------------------------------------------------
 D3D12Resource CreateTexture2DFromMemory(
     D3D12Core& core,
@@ -66,9 +91,9 @@ std::vector<uint8_t> ExpandRGBtoRGBA(
 
 // --------------------------------------------------------------------------
 // ホットパス用: コマンドを積むだけ（Wait しない）。
-//   upload は呼び出し側が用意し、GPU 完了まで生かし続けること（Ring 推奨）。
-//   ctx は呼び出し側で Reset 済みで、実行・Fence 待ちも呼び出し側責任。
-//   コピー後 dstTexture を finalState へ遷移し、dstTexture.SetState(finalState) する。
+//   単一 subresource の 2D Texture 用。
+//   planar / mipmapped / array texture など複数 subresource を持つ texture には
+//   RecordUploadTextureSubresources を使うこと。
 // --------------------------------------------------------------------------
 void RecordUploadTexture2D(
     D3D12Core& core,
@@ -80,8 +105,52 @@ void RecordUploadTexture2D(
     UINT srcRowPitch = 0,
     D3D12_RESOURCE_STATES finalState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
+void RecordUploadTexture2D(
+    D3D12Core& core,
+    D3D12CommandContext& ctx,
+    D3D12Resource& dstTexture,
+    D3D12UploadRing& ring,
+    const void* data,
+    UINT width, UINT height, DXGI_FORMAT format,
+    UINT srcRowPitch = 0,
+    D3D12_RESOURCE_STATES finalState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+struct D3D12TextureSubresourceData {
+    const void* data = nullptr;
+    UINT64 rowPitch = 0;   // 0 なら GetCopyableFootprints の rowSize を使う
+    UINT64 slicePitch = 0; // 0 なら rowPitch * numRows を使う
+};
+
 // dstTexture を CPU からアップロードするのに必要な Upload Buffer の最小サイズを返す。
+// 既存 overload は subresource 0 のみを対象にする。
 UINT64 GetRequiredUploadSize(D3D12Core& core, const D3D12Resource& dstTexture);
+UINT64 GetRequiredUploadSize(
+    D3D12Core& core,
+    const D3D12Resource& dstTexture,
+    UINT firstSubresource,
+    UINT subresourceCount);
+
+// 複数 subresource をまとめて upload する汎用 API。
+// dstTexture は COPY_DEST 状態であること。コピー後、finalState へ全 subresource を遷移する。
+void RecordUploadTextureSubresources(
+    D3D12Core& core,
+    D3D12CommandContext& ctx,
+    D3D12Resource& dstTexture,
+    D3D12UploadBuffer& upload,
+    const D3D12TextureSubresourceData* subresources,
+    UINT firstSubresource,
+    UINT subresourceCount,
+    D3D12_RESOURCE_STATES finalState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+void RecordUploadTextureSubresources(
+    D3D12Core& core,
+    D3D12CommandContext& ctx,
+    D3D12Resource& dstTexture,
+    D3D12UploadRing& ring,
+    const D3D12TextureSubresourceData* subresources,
+    UINT firstSubresource,
+    UINT subresourceCount,
+    D3D12_RESOURCE_STATES finalState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 // --------------------------------------------------------------------------
 // ディスクリプタ作成ヘルパ（指定の CPU ハンドルに View を作る）
@@ -128,6 +197,52 @@ void CreateTexture2DUav(
     DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN,
     UINT mipSlice = 0);
 
+// format == DXGI_FORMAT_UNKNOWN のときは structured buffer view を作る。
+// その場合 structureByteStride は必ず明示すること。
+// format != DXGI_FORMAT_UNKNOWN のときは typed buffer view を作り、structureByteStride は 0 にする。
+void CreateBufferSrv(
+    D3D12Core& core,
+    const D3D12Resource& buffer,
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+    UINT firstElement,
+    UINT numElements,
+    UINT structureByteStride = 0,
+    DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN);
+
+// format == DXGI_FORMAT_UNKNOWN のときは structured buffer view を作る。
+// その場合 structureByteStride は必ず明示すること。
+// format != DXGI_FORMAT_UNKNOWN のときは typed buffer view を作り、structureByteStride は 0 にする。
+void CreateBufferUav(
+    D3D12Core& core,
+    const D3D12Resource& buffer,
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+    UINT firstElement,
+    UINT numElements,
+    UINT structureByteStride = 0,
+    DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN,
+    ID3D12Resource* counterResource = nullptr);
+
+void CreateConstantBufferView(
+    D3D12Core& core,
+    const D3D12Resource& buffer,
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+    UINT64 byteOffset = 0,
+    UINT sizeBytes = 0);
+
+void CreateTexture2DRtv(
+    D3D12Core& core,
+    const D3D12Resource& texture,
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+    DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN,
+    UINT mipSlice = 0);
+
+void CreateTexture2DDsv(
+    D3D12Core& core,
+    const D3D12Resource& texture,
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+    DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN,
+    UINT mipSlice = 0);
+
 // --------------------------------------------------------------------------
 // Sampler 作成ヘルパ
 // --------------------------------------------------------------------------
@@ -138,21 +253,5 @@ void CreateSampler(
     D3D12Core& core,
     const D3D12_SAMPLER_DESC& desc,
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle);
-
-// --------------------------------------------------------------------------
-// ホットパス用（Ring 版）: Ring から自動確保し、コマンドを積む（Wait しない）。
-//   Ring の Allocation 寿命は FinishFrame + ReclaimCompleted で管理される。
-//   呼び出し側は Execute → Signal → ring.FinishFrame(fv) とし、
-//   次フレーム冒頭で ring.ReclaimCompleted(fence) を呼ぶこと。
-// --------------------------------------------------------------------------
-void RecordUploadTexture2D(
-    D3D12Core& core,
-    D3D12CommandContext& ctx,
-    D3D12Resource& dstTexture,
-    D3D12UploadRing& ring,
-    const void* data,
-    UINT width, UINT height, DXGI_FORMAT format,
-    UINT srcRowPitch = 0,
-    D3D12_RESOURCE_STATES finalState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 } // namespace D3D12CoreLib

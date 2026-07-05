@@ -40,6 +40,16 @@ TEST(ComputePipeline, TemplateSlotIndices) {
     CHECK(pipeline.RootConstantsIndex() != UINT_MAX);
 }
 
+TEST(ComputePipeline, BindRejectsUninitializedPipeline) {
+    REQUIRE_CORE(core);
+    D3D12CommandContext ctx = core->CreateDirectContext();
+    ctx.Reset();
+    D3D12ComputePipeline pipeline;
+    CHECK_THROWS(pipeline.Bind(ctx));
+    CHECK_THROWS(pipeline.Dispatch(ctx, 1, 1, 1));
+    ctx.Close();
+}
+
 TEST(ComputePipeline, DispatchFillAndReadback) {
     REQUIRE_CORE(core);
     REQUIRE_DXC();
@@ -80,12 +90,11 @@ TEST(ComputePipeline, DispatchFillAndReadback) {
 
     ID3D12DescriptorHeap* heaps[] = { alloc.GetHeap() };
     cl->SetDescriptorHeaps(1, heaps);
-    cl->SetComputeRootSignature(pipeline.GetRootSignature());
-    cl->SetPipelineState(pipeline.GetPipelineState());
+    pipeline.Bind(ctx);
     cl->SetComputeRootDescriptorTable(pipeline.UavTableIndex(), uav.gpu);
     UINT consts[3] = { value, size, size };
     cl->SetComputeRoot32BitConstants(pipeline.RootConstantsIndex(), 3, consts, 0);
-    cl->Dispatch((size + 7) / 8, (size + 7) / 8, 1);
+    pipeline.Dispatch(ctx, (size + 7) / 8, (size + 7) / 8, 1);
 
     ctx.ResourceBarrier(MakeTransitionBarrier(
         output.Get(),
