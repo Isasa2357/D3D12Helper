@@ -8,11 +8,16 @@ namespace Processing {
 
 bool IsRgbaLikeFormat(DXGI_FORMAT format) noexcept {
     return format == DXGI_FORMAT_R8G8B8A8_UNORM ||
-           format == DXGI_FORMAT_B8G8R8A8_UNORM;
+           format == DXGI_FORMAT_B8G8R8A8_UNORM ||
+           format == DXGI_FORMAT_R16G16B16A16_FLOAT;
+}
+
+bool IsYuv420Format(DXGI_FORMAT format) noexcept {
+    return format == DXGI_FORMAT_NV12 || format == DXGI_FORMAT_P010;
 }
 
 bool IsSupportedProcessingFormat(DXGI_FORMAT format) noexcept {
-    return IsRgbaLikeFormat(format) || format == DXGI_FORMAT_NV12;
+    return IsRgbaLikeFormat(format) || IsYuv420Format(format);
 }
 
 bool IsSupportedRgbaOutputFormat(DXGI_FORMAT format) noexcept {
@@ -68,6 +73,15 @@ void ValidateEvenSize(UINT width, UINT height, DXGI_FORMAT format, const char* f
     if (FormatUtil::RequiresEvenSize(format) && ((width & 1u) != 0u || (height & 1u) != 0u)) {
         std::ostringstream os;
         os << functionName << ": format requires even width and height";
+        throw ValidationError(os.str());
+    }
+}
+
+void ValidateYuv420Rect(const ProcessingRect& rect, const char* functionName, const char* argumentName) {
+    if ((static_cast<UINT>(rect.x) & 1u) != 0u || (static_cast<UINT>(rect.y) & 1u) != 0u ||
+        (rect.width & 1u) != 0u || (rect.height & 1u) != 0u) {
+        std::ostringstream os;
+        os << functionName << ": " << argumentName << " for YUV420 format must have even x, y, width, and height";
         throw ValidationError(os.str());
     }
 }

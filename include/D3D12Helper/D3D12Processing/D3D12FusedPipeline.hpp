@@ -1,7 +1,7 @@
 #pragma once
 //
-// D3D12FormatConverter.hpp
-// GPU format conversion passes for D3D12 resources.
+// D3D12FusedPipeline.hpp
+// One-dispatch fused Processing passes.
 //
 #include "D3D12ProcessingContext.hpp"
 #include "D3D12ProcessingShaderCache.hpp"
@@ -14,23 +14,25 @@
 namespace D3D12CoreLib {
 namespace Processing {
 
-class D3D12FormatConverter {
+class D3D12FusedProcessor {
 public:
-    D3D12FormatConverter();
-    ~D3D12FormatConverter();
+    D3D12FusedProcessor();
+    ~D3D12FusedProcessor();
 
-    D3D12FormatConverter(const D3D12FormatConverter&) = delete;
-    D3D12FormatConverter& operator=(const D3D12FormatConverter&) = delete;
-    D3D12FormatConverter(D3D12FormatConverter&&) noexcept;
-    D3D12FormatConverter& operator=(D3D12FormatConverter&&) noexcept;
+    D3D12FusedProcessor(const D3D12FusedProcessor&) = delete;
+    D3D12FusedProcessor& operator=(const D3D12FusedProcessor&) = delete;
+    D3D12FusedProcessor(D3D12FusedProcessor&&) noexcept;
+    D3D12FusedProcessor& operator=(D3D12FusedProcessor&&) noexcept;
 
     void Initialize(D3D12ProcessingContext& context);
 
-    void RecordConvert(
+    // format conversion と resize を 1 dispatch で行う。
+    // 対応: RGBA-like -> RGBA-like, YUV420(NV12/P010) -> RGBA-like。
+    void RecordConvertResize(
         D3D12CommandContext& commandContext,
         D3D12Resource& src,
         D3D12Resource& dst,
-        const FormatConvertDesc& desc,
+        const FusedConvertResizeDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
 
     D3D12Resource CreateOutputTexture(
@@ -46,25 +48,18 @@ private:
     void EnsureInitialized() const;
     void EnsurePipelines();
 
-    void RecordRgbToRgb(
+    void RecordRgbToRgbResize(
         D3D12CommandContext& commandContext,
         D3D12Resource& src,
         D3D12Resource& dst,
-        const FormatConvertDesc& desc,
+        const FusedConvertResizeDesc& desc,
         const D3D12ProcessingStateDesc& state);
 
-    void RecordYuv420ToRgb(
+    void RecordYuv420ToRgbResize(
         D3D12CommandContext& commandContext,
         D3D12Resource& src,
         D3D12Resource& dst,
-        const FormatConvertDesc& desc,
-        const D3D12ProcessingStateDesc& state);
-
-    void RecordRgbToYuv420(
-        D3D12CommandContext& commandContext,
-        D3D12Resource& src,
-        D3D12Resource& dst,
-        const FormatConvertDesc& desc,
+        const FusedConvertResizeDesc& desc,
         const D3D12ProcessingStateDesc& state);
 
     D3D12ProcessingContext* m_context = nullptr;

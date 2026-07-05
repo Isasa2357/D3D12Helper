@@ -4,9 +4,11 @@
 #define THREAD_GROUP_X 16
 #define THREAD_GROUP_Y 16
 
+static const uint DXGI_FORMAT_R16G16B16A16_FLOAT_VALUE = 10;
 static const uint DXGI_FORMAT_R8G8B8A8_UNORM_VALUE = 28;
 static const uint DXGI_FORMAT_B8G8R8A8_UNORM_VALUE = 87;
 static const uint DXGI_FORMAT_NV12_VALUE = 103;
+static const uint DXGI_FORMAT_P010_VALUE = 104;
 
 static const uint PROCESSING_FILTER_POINT = 0;
 static const uint PROCESSING_FILTER_LINEAR = 1;
@@ -58,16 +60,20 @@ int3 LoadCoord(uint2 p)
 
 float4 ToLogicalRgba(float4 v, uint format)
 {
-    // Typed SRV reads already expose components in logical RGBA order for these
-    // formats.  Do not manually swizzle B8G8R8A8 here.
+    // Typed SRV load returns logical RGBA components for RGBA/BGRA/float formats.
+    // Do not manually swizzle BGRA here.
     return v;
 }
 
 float4 FromLogicalRgba(float4 v, uint format)
 {
-    // Typed UAV writes perform the format conversion to the resource memory
-    // layout.  Shader code should keep using logical RGBA values.
+    // Typed UAV store performs format conversion. Keep shader-side values logical RGBA.
     return v;
+}
+
+bool IsYuv420FormatValue(uint format)
+{
+    return format == DXGI_FORMAT_NV12_VALUE || format == DXGI_FORMAT_P010_VALUE;
 }
 
 #endif

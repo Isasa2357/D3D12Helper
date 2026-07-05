@@ -31,8 +31,11 @@ public:
 
     bool SupportsNv12Srv() const noexcept { return m_caps.nv12Srv; }
     bool SupportsNv12Uav() const noexcept { return m_caps.nv12Uav; }
+    bool SupportsP010Srv() const noexcept { return m_caps.p010Srv; }
+    bool SupportsP010Uav() const noexcept { return m_caps.p010Uav; }
     bool SupportsRgba8Uav() const noexcept { return m_caps.rgba8Uav; }
     bool SupportsBgra8Uav() const noexcept { return m_caps.bgra8Uav; }
+    bool SupportsRgba16FloatUav() const noexcept { return m_caps.rgba16FloatUav; }
 
 private:
     D3D12ProcessingCaps QueryCaps(ID3D12Device* device) const;

@@ -85,6 +85,17 @@ struct ResizeDesc {
     ProcessingRect dstRect = {};
 };
 
+// 1 dispatch で format convert と resize を行うための desc。
+// 現在は RGBA-like -> RGBA-like と YUV420(NV12/P010) -> RGBA-like を対象にする。
+struct FusedConvertResizeDesc {
+    DXGI_FORMAT srcFormat = DXGI_FORMAT_UNKNOWN;
+    DXGI_FORMAT dstFormat = DXGI_FORMAT_UNKNOWN;
+    ProcessingColorDesc color = {};
+    ProcessingFilter filter = ProcessingFilter::Linear;
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+};
+
 struct RemapDesc {
     DXGI_FORMAT srcFormat = DXGI_FORMAT_UNKNOWN;
     DXGI_FORMAT dstFormat = DXGI_FORMAT_UNKNOWN;
@@ -128,12 +139,21 @@ struct D3D12ProcessingTwoInputStateDesc {
 struct D3D12ProcessingCaps {
     bool rgba8Uav = false;
     bool bgra8Uav = false;
+    bool rgba16FloatUav = false;
+
     bool nv12Srv = false;
     bool nv12Uav = false;
+    bool p010Srv = false;
+    bool p010Uav = false;
+
     bool r8TypedUavLoad = false;
     bool r8TypedUavStore = false;
     bool rg8TypedUavLoad = false;
     bool rg8TypedUavStore = false;
+    bool r16TypedUavLoad = false;
+    bool r16TypedUavStore = false;
+    bool rg16TypedUavLoad = false;
+    bool rg16TypedUavStore = false;
 };
 
 class ProcessingError : public std::runtime_error {
@@ -157,6 +177,7 @@ public:
 };
 
 bool IsRgbaLikeFormat(DXGI_FORMAT format) noexcept;
+bool IsYuv420Format(DXGI_FORMAT format) noexcept;
 bool IsSupportedProcessingFormat(DXGI_FORMAT format) noexcept;
 bool IsSupportedRgbaOutputFormat(DXGI_FORMAT format) noexcept;
 bool IsSupportedRemapMapFormat(DXGI_FORMAT format) noexcept;
@@ -165,6 +186,7 @@ bool IsSupportedCompositeFormat(DXGI_FORMAT format) noexcept;
 ProcessingRect ResolveRect(const ProcessingRect& rect, UINT fallbackWidth, UINT fallbackHeight);
 void ValidateRectInside(const ProcessingRect& rect, UINT width, UINT height, const char* functionName, const char* argumentName);
 void ValidateEvenSize(UINT width, UINT height, DXGI_FORMAT format, const char* functionName);
+void ValidateYuv420Rect(const ProcessingRect& rect, const char* functionName, const char* argumentName);
 void ValidateOpacity(float opacity, const char* functionName);
 
 } // namespace Processing

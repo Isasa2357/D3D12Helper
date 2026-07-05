@@ -25,6 +25,18 @@ bool HasSupport2(D3D12_FORMAT_SUPPORT2 value, D3D12_FORMAT_SUPPORT2 flag) noexce
     return (static_cast<UINT>(value) & static_cast<UINT>(flag)) == static_cast<UINT>(flag);
 }
 
+bool SupportsTypedUavStore(ID3D12Device* device, DXGI_FORMAT format) {
+    const auto support = QueryFormatSupport(device, format);
+    return HasSupport1(support.Support1, D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) &&
+           HasSupport2(support.Support2, D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE);
+}
+
+bool SupportsTextureLoad(ID3D12Device* device, DXGI_FORMAT format) {
+    const auto support = QueryFormatSupport(device, format);
+    return HasSupport1(support.Support1, D3D12_FORMAT_SUPPORT1_TEXTURE2D) &&
+           HasSupport1(support.Support1, D3D12_FORMAT_SUPPORT1_SHADER_LOAD);
+}
+
 } // namespace
 
 void D3D12ProcessingContext::Initialize(
@@ -83,19 +95,12 @@ D3D12ProcessingCaps D3D12ProcessingContext::QueryCaps(ID3D12Device* device) cons
 
     D3D12ProcessingCaps caps = {};
 
-    const auto rgba = QueryFormatSupport(device, DXGI_FORMAT_R8G8B8A8_UNORM);
-    caps.rgba8Uav = HasSupport1(rgba.Support1, D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) &&
-                    HasSupport2(rgba.Support2, D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE);
+    caps.rgba8Uav = SupportsTypedUavStore(device, DXGI_FORMAT_R8G8B8A8_UNORM);
+    caps.bgra8Uav = SupportsTypedUavStore(device, DXGI_FORMAT_B8G8R8A8_UNORM);
+    caps.rgba16FloatUav = SupportsTypedUavStore(device, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
-    const auto bgra = QueryFormatSupport(device, DXGI_FORMAT_B8G8R8A8_UNORM);
-    caps.bgra8Uav = HasSupport1(bgra.Support1, D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) &&
-                    HasSupport2(bgra.Support2, D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE);
-
-    const auto nv12 = QueryFormatSupport(device, DXGI_FORMAT_NV12);
-    caps.nv12Srv = HasSupport1(nv12.Support1, D3D12_FORMAT_SUPPORT1_TEXTURE2D) &&
-                   HasSupport1(nv12.Support1, D3D12_FORMAT_SUPPORT1_SHADER_LOAD);
-    caps.nv12Uav = HasSupport1(nv12.Support1, D3D12_FORMAT_SUPPORT1_TEXTURE2D) &&
-                   HasSupport1(nv12.Support1, D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW);
+    caps.nv12Srv = SupportsTextureLoad(device, DXGI_FORMAT_NV12);
+    caps.p010Srv = SupportsTextureLoad(device, DXGI_FORMAT_P010);
 
     const auto r8 = QueryFormatSupport(device, DXGI_FORMAT_R8_UNORM);
     caps.r8TypedUavLoad = HasSupport2(r8.Support2, D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD);
@@ -105,7 +110,24 @@ D3D12ProcessingCaps D3D12ProcessingContext::QueryCaps(ID3D12Device* device) cons
     caps.rg8TypedUavLoad = HasSupport2(rg8.Support2, D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD);
     caps.rg8TypedUavStore = HasSupport2(rg8.Support2, D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE);
 
-    caps.nv12Uav = caps.nv12Uav && caps.r8TypedUavStore && caps.rg8TypedUavStore;
+    const auto r16 = QueryFormatSupport(device, DXGI_FORMAT_R16_UNORM);
+    caps.r16TypedUavLoad = HasSupport2(r16.Support2, D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD);
+    caps.r16TypedUavStore = HasSupport2(r16.Support2, D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE);
+
+    const auto rg16 = QueryFormatSupport(device, DXGI_FORMAT_R16G16_UNORM);
+    caps.rg16TypedUavLoad = HasSupport2(rg16.Support2, D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD);
+    caps.rg16TypedUavStore = HasSupport2(rg16.Support2, D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE);
+
+    const auto nv12 = QueryFormatSupport(device, DXGI_FORMAT_NV12);
+    caps.nv12Uav = HasSupport1(nv12.Support1, D3D12_FORMAT_SUPPORT1_TEXTURE2D) &&
+                   HasSupport1(nv12.Support1, D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) &&
+                   caps.r8TypedUavStore && caps.rg8TypedUavStore;
+
+    const auto p010 = QueryFormatSupport(device, DXGI_FORMAT_P010);
+    caps.p010Uav = HasSupport1(p010.Support1, D3D12_FORMAT_SUPPORT1_TEXTURE2D) &&
+                   HasSupport1(p010.Support1, D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) &&
+                   caps.r16TypedUavStore && caps.rg16TypedUavStore;
+
     return caps;
 }
 

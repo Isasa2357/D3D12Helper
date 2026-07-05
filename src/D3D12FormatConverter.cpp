@@ -1,10 +1,8 @@
-﻿#include "D3D12Processing/D3D12FormatConverter.hpp"
+#include "D3D12Processing/D3D12FormatConverter.hpp"
 
 #include "D3D12Core/D3D12Barrier.hpp"
-#include "D3D12Core/D3D12FormatUtil.hpp"
 #include "D3D12Framework/D3D12Helpers.hpp"
 
-#include <algorithm>
 #include <sstream>
 
 namespace D3D12CoreLib {
@@ -82,6 +80,33 @@ DXGI_FORMAT ResolveFormat(DXGI_FORMAT requested, const D3D12Resource& resource) 
     return requested == DXGI_FORMAT_UNKNOWN ? resource.GetFormat() : requested;
 }
 
+void ValidateFormatMatchesResource(DXGI_FORMAT requested, const D3D12Resource& resource, const char* functionName, const char* argumentName) {
+    const DXGI_FORMAT actual = resource.GetFormat();
+    if (requested != DXGI_FORMAT_UNKNOWN && requested != actual) {
+        std::ostringstream os;
+        os << functionName << ": " << argumentName << " format does not match resource format";
+        throw ValidationError(os.str());
+    }
+}
+
+void ValidateOutputFormatCaps(D3D12ProcessingContext& context, DXGI_FORMAT format, const char* functionName) {
+    if (format == DXGI_FORMAT_R8G8B8A8_UNORM && !context.SupportsRgba8Uav()) {
+        throw UnsupportedFeatureError(std::string(functionName) + ": R8G8B8A8 UAV typed store is not supported");
+    }
+    if (format == DXGI_FORMAT_B8G8R8A8_UNORM && !context.SupportsBgra8Uav()) {
+        throw UnsupportedFeatureError(std::string(functionName) + ": B8G8R8A8 UAV typed store is not supported");
+    }
+    if (format == DXGI_FORMAT_R16G16B16A16_FLOAT && !context.SupportsRgba16FloatUav()) {
+        throw UnsupportedFeatureError(std::string(functionName) + ": R16G16B16A16_FLOAT UAV typed store is not supported");
+    }
+    if (format == DXGI_FORMAT_NV12 && !context.SupportsNv12Uav()) {
+        throw UnsupportedFeatureError(std::string(functionName) + ": NV12 UAV plane views are not supported");
+    }
+    if (format == DXGI_FORMAT_P010 && !context.SupportsP010Uav()) {
+        throw UnsupportedFeatureError(std::string(functionName) + ": P010 UAV plane views are not supported");
+    }
+}
+
 D3D12ProcessingConstants MakeConstants(
     const D3D12Resource& src,
     const D3D12Resource& dst,
@@ -99,7 +124,16 @@ D3D12ProcessingConstants MakeConstants(
     ValidateRectInside(dstRect, dstW, dstH, "D3D12FormatConverter::RecordConvert", "dstRect");
 
     if (srcRect.width != dstRect.width || srcRect.height != dstRect.height) {
-        throw ValidationError("D3D12FormatConverter::RecordConvert: format conversion does not resize; use D3D12Resizer first");
+        throw ValidationError("D3D12FormatConverter::RecordConvert: format conversion does not resize; use D3D12Resizer or D3D12FusedProcessor");
+    }
+
+    const DXGI_FORMAT srcFormat = ResolveFormat(desc.srcFormat, src);
+    const DXGI_FORMAT dstFormat = ResolveFormat(desc.dstFormat, dst);
+    if (IsYuv420Format(srcFormat)) {
+        ValidateYuv420Rect(srcRect, "D3D12FormatConverter::RecordConvert", "srcRect");
+    }
+    if (IsYuv420Format(dstFormat)) {
+        ValidateYuv420Rect(dstRect, "D3D12FormatConverter::RecordConvert", "dstRect");
     }
 
     D3D12ProcessingConstants c = {};
@@ -111,8 +145,8 @@ D3D12ProcessingConstants MakeConstants(
     c.srcY = srcRect.y;
     c.dstX = dstRect.x;
     c.dstY = dstRect.y;
-    c.srcFormat = static_cast<UINT>(ResolveFormat(desc.srcFormat, src));
-    c.dstFormat = static_cast<UINT>(ResolveFormat(desc.dstFormat, dst));
+    c.srcFormat = static_cast<UINT>(srcFormat);
+    c.dstFormat = static_cast<UINT>(dstFormat);
     c.srcMatrix = static_cast<UINT>(desc.color.srcMatrix);
     c.srcRange = static_cast<UINT>(desc.color.srcRange);
     c.dstMatrix = static_cast<UINT>(desc.color.dstMatrix);
@@ -135,15 +169,9 @@ void TransitionForPass(
 
     D3D12_RESOURCE_BARRIER barriers[2] = {};
     UINT count = 0;
-    if (srcBefore != readState) {
-        barriers[count++] = MakeTransitionBarrier(src.Get(), srcBefore, readState);
-    }
-    if (dstBefore != writeState) {
-        barriers[count++] = MakeTransitionBarrier(dst.Get(), dstBefore, writeState);
-    }
-    if (count > 0) {
-        commandContext.ResourceBarrier(count, barriers);
-    }
+    if (srcBefore != readState) barriers[count++] = MakeTransitionBarrier(src.Get(), srcBefore, readState);
+    if (dstBefore != writeState) barriers[count++] = MakeTransitionBarrier(dst.Get(), dstBefore, writeState);
+    if (count > 0) commandContext.ResourceBarrier(count, barriers);
 
     if (!state.useExplicitStates) {
         src.SetState(readState);
@@ -161,28 +189,16 @@ void TransitionAfterPass(
 
     commandContext.ResourceBarrier(MakeUavBarrier(dst.Get()));
 
-    if (!state.useExplicitStates) {
-        return;
-    }
+    if (!state.useExplicitStates) return;
 
     D3D12_RESOURCE_BARRIER barriers[2] = {};
     UINT count = 0;
-    if (state.srcAfter != readState) {
-        barriers[count++] = MakeTransitionBarrier(src.Get(), readState, state.srcAfter);
-    }
-    if (state.dstAfter != writeState) {
-        barriers[count++] = MakeTransitionBarrier(dst.Get(), writeState, state.dstAfter);
-    }
-    if (count > 0) {
-        commandContext.ResourceBarrier(count, barriers);
-    }
+    if (state.srcAfter != readState) barriers[count++] = MakeTransitionBarrier(src.Get(), readState, state.srcAfter);
+    if (state.dstAfter != writeState) barriers[count++] = MakeTransitionBarrier(dst.Get(), writeState, state.dstAfter);
+    if (count > 0) commandContext.ResourceBarrier(count, barriers);
 }
 
-void SetCommonComputeState(
-    D3D12ProcessingContext& context,
-    D3D12CommandContext& commandContext,
-    const D3D12DescriptorRange& range) {
-
+void SetCommonComputeState(D3D12ProcessingContext& context, D3D12CommandContext& commandContext, const D3D12DescriptorRange& range) {
     if (!range.shaderVisible) {
         throw ValidationError("D3D12FormatConverter: descriptor range must be shader-visible");
     }
@@ -194,11 +210,7 @@ void SetCommonComputeState(
     cmd->SetDescriptorHeaps(1, heaps);
 }
 
-void SetRootConstants(
-    const D3D12ComputePipeline& pipeline,
-    D3D12CommandContext& commandContext,
-    const D3D12ProcessingConstants& constants) {
-
+void SetRootConstants(const D3D12ComputePipeline& pipeline, D3D12CommandContext& commandContext, const D3D12ProcessingConstants& constants) {
     const UINT index = pipeline.RootConstantsIndex();
     if (index == UINT_MAX) {
         throw ValidationError("D3D12FormatConverter: pipeline has no root constants slot");
@@ -214,8 +226,8 @@ void SetRootConstants(
 
 struct D3D12FormatConverter::Pipelines {
     D3D12ComputePipeline rgbToRgb;
-    D3D12ComputePipeline nv12ToRgb;
-    D3D12ComputePipeline rgbToNv12;
+    D3D12ComputePipeline yuv420ToRgb;
+    D3D12ComputePipeline rgbToYuv420;
     bool initialized = false;
 };
 
@@ -238,12 +250,8 @@ void D3D12FormatConverter::EnsureInitialized() const {
 
 void D3D12FormatConverter::EnsurePipelines() {
     EnsureInitialized();
-    if (!m_pipelines) {
-        m_pipelines.reset(new Pipelines());
-    }
-    if (m_pipelines->initialized) {
-        return;
-    }
+    if (!m_pipelines) m_pipelines.reset(new Pipelines());
+    if (m_pipelines->initialized) return;
 
     ComputePipelineDesc oneSrvOneUav = {};
     oneSrvOneUav.numSrvs = 1;
@@ -263,9 +271,9 @@ void D3D12FormatConverter::EnsurePipelines() {
     auto* device = m_context->GetDevice();
     m_pipelines->rgbToRgb.InitializeWithTemplate(
         device, m_shaderCache.GetComputeShader("ConvertRgbToRgb.hlsl"), oneSrvOneUav);
-    m_pipelines->nv12ToRgb.InitializeWithTemplate(
+    m_pipelines->yuv420ToRgb.InitializeWithTemplate(
         device, m_shaderCache.GetComputeShader("ConvertNv12ToRgb.hlsl"), twoSrvOneUav);
-    m_pipelines->rgbToNv12.InitializeWithTemplate(
+    m_pipelines->rgbToYuv420.InitializeWithTemplate(
         device, m_shaderCache.GetComputeShader("ConvertRgbToNv12.hlsl"), oneSrvTwoUav);
     m_pipelines->initialized = true;
 }
@@ -282,6 +290,8 @@ void D3D12FormatConverter::RecordConvert(
     ValidateTexture2D(dst, "D3D12FormatConverter::RecordConvert", "dst");
     ValidateNotSameResource(src, dst, "D3D12FormatConverter::RecordConvert");
     ValidateOutputUav(dst, "D3D12FormatConverter::RecordConvert");
+    ValidateFormatMatchesResource(desc.srcFormat, src, "D3D12FormatConverter::RecordConvert", "src");
+    ValidateFormatMatchesResource(desc.dstFormat, dst, "D3D12FormatConverter::RecordConvert", "dst");
 
     const DXGI_FORMAT srcFormat = ResolveFormat(desc.srcFormat, src);
     const DXGI_FORMAT dstFormat = ResolveFormat(desc.dstFormat, dst);
@@ -291,10 +301,10 @@ void D3D12FormatConverter::RecordConvert(
 
     if (IsRgbaLikeFormat(srcFormat) && IsRgbaLikeFormat(dstFormat)) {
         RecordRgbToRgb(commandContext, src, dst, desc, state);
-    } else if (srcFormat == DXGI_FORMAT_NV12 && IsRgbaLikeFormat(dstFormat)) {
-        RecordNv12ToRgb(commandContext, src, dst, desc, state);
-    } else if (IsRgbaLikeFormat(srcFormat) && dstFormat == DXGI_FORMAT_NV12) {
-        RecordRgbToNv12(commandContext, src, dst, desc, state);
+    } else if (IsYuv420Format(srcFormat) && IsRgbaLikeFormat(dstFormat)) {
+        RecordYuv420ToRgb(commandContext, src, dst, desc, state);
+    } else if (IsRgbaLikeFormat(srcFormat) && IsYuv420Format(dstFormat)) {
+        RecordRgbToYuv420(commandContext, src, dst, desc, state);
     } else {
         throw UnsupportedFormatError("D3D12FormatConverter::RecordConvert: unsupported conversion matrix");
     }
@@ -315,22 +325,8 @@ D3D12Resource D3D12FormatConverter::CreateOutputTexture(
         throw UnsupportedFormatError("D3D12FormatConverter::CreateOutputTexture: unsupported output format");
     }
     ValidateEvenSize(width, height, format, "D3D12FormatConverter::CreateOutputTexture");
-    if (format == DXGI_FORMAT_R8G8B8A8_UNORM && !m_context->SupportsRgba8Uav()) {
-        throw UnsupportedFeatureError("D3D12FormatConverter::CreateOutputTexture: R8G8B8A8 UAV typed store is not supported");
-    }
-    if (format == DXGI_FORMAT_B8G8R8A8_UNORM && !m_context->SupportsBgra8Uav()) {
-        throw UnsupportedFeatureError("D3D12FormatConverter::CreateOutputTexture: B8G8R8A8 UAV typed store is not supported");
-    }
-    if (format == DXGI_FORMAT_NV12 && !m_context->SupportsNv12Uav()) {
-        throw UnsupportedFeatureError("D3D12FormatConverter::CreateOutputTexture: NV12 UAV plane views are not supported");
-    }
-    return CreateTexture2D(
-        core,
-        width,
-        height,
-        format,
-        initialState,
-        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+    ValidateOutputFormatCaps(*m_context, format, "D3D12FormatConverter::CreateOutputTexture");
+    return CreateTexture2D(core, width, height, format, initialState, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 }
 
 void D3D12FormatConverter::RecordRgbToRgb(
@@ -366,7 +362,7 @@ void D3D12FormatConverter::RecordRgbToRgb(
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 }
 
-void D3D12FormatConverter::RecordNv12ToRgb(
+void D3D12FormatConverter::RecordYuv420ToRgb(
     D3D12CommandContext& commandContext,
     D3D12Resource& src,
     D3D12Resource& dst,
@@ -374,13 +370,12 @@ void D3D12FormatConverter::RecordNv12ToRgb(
     const D3D12ProcessingStateDesc& state) {
 
     auto constants = MakeConstants(src, dst, desc);
-    if (static_cast<DXGI_FORMAT>(constants.srcFormat) != DXGI_FORMAT_NV12 ||
+    if (!IsYuv420Format(static_cast<DXGI_FORMAT>(constants.srcFormat)) ||
         !IsRgbaLikeFormat(static_cast<DXGI_FORMAT>(constants.dstFormat))) {
-        throw UnsupportedFormatError("D3D12FormatConverter::RecordNv12ToRgb: expected NV12 -> RGBA-like conversion");
+        throw UnsupportedFormatError("D3D12FormatConverter::RecordYuv420ToRgb: expected YUV420 -> RGBA-like conversion");
     }
-    ValidateEvenSize(constants.srcWidth, constants.srcHeight, DXGI_FORMAT_NV12, "D3D12FormatConverter::RecordNv12ToRgb");
 
-    auto srcViews = CreateNv12SrvViewSet(*m_context, src);
+    auto srcViews = CreateYuv420SrvViewSet(*m_context, src);
     auto dstViews = CreateRgbaTextureViewSet(*m_context, dst, false, true, static_cast<DXGI_FORMAT>(constants.dstFormat));
 
     TransitionForPass(commandContext, src, dst, state,
@@ -388,18 +383,18 @@ void D3D12FormatConverter::RecordNv12ToRgb(
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
     SetCommonComputeState(*m_context, commandContext, srcViews.range);
-    m_pipelines->nv12ToRgb.Bind(commandContext);
-    commandContext.GetCommandList()->SetComputeRootDescriptorTable(m_pipelines->nv12ToRgb.SrvTableIndex(), srcViews.Gpu(srcViews.ySrvIndex));
-    commandContext.GetCommandList()->SetComputeRootDescriptorTable(m_pipelines->nv12ToRgb.UavTableIndex(), dstViews.Gpu(dstViews.uavIndex));
-    SetRootConstants(m_pipelines->nv12ToRgb, commandContext, constants);
-    m_pipelines->nv12ToRgb.Dispatch(commandContext, DivideRoundUp(constants.dstWidth, kThreadGroupX), DivideRoundUp(constants.dstHeight, kThreadGroupY), 1);
+    m_pipelines->yuv420ToRgb.Bind(commandContext);
+    commandContext.GetCommandList()->SetComputeRootDescriptorTable(m_pipelines->yuv420ToRgb.SrvTableIndex(), srcViews.Gpu(srcViews.ySrvIndex));
+    commandContext.GetCommandList()->SetComputeRootDescriptorTable(m_pipelines->yuv420ToRgb.UavTableIndex(), dstViews.Gpu(dstViews.uavIndex));
+    SetRootConstants(m_pipelines->yuv420ToRgb, commandContext, constants);
+    m_pipelines->yuv420ToRgb.Dispatch(commandContext, DivideRoundUp(constants.dstWidth, kThreadGroupX), DivideRoundUp(constants.dstHeight, kThreadGroupY), 1);
 
     TransitionAfterPass(commandContext, src, dst, state,
         D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 }
 
-void D3D12FormatConverter::RecordRgbToNv12(
+void D3D12FormatConverter::RecordRgbToYuv420(
     D3D12CommandContext& commandContext,
     D3D12Resource& src,
     D3D12Resource& dst,
@@ -408,24 +403,24 @@ void D3D12FormatConverter::RecordRgbToNv12(
 
     auto constants = MakeConstants(src, dst, desc);
     if (!IsRgbaLikeFormat(static_cast<DXGI_FORMAT>(constants.srcFormat)) ||
-        static_cast<DXGI_FORMAT>(constants.dstFormat) != DXGI_FORMAT_NV12) {
-        throw UnsupportedFormatError("D3D12FormatConverter::RecordRgbToNv12: expected RGBA-like -> NV12 conversion");
+        !IsYuv420Format(static_cast<DXGI_FORMAT>(constants.dstFormat))) {
+        throw UnsupportedFormatError("D3D12FormatConverter::RecordRgbToYuv420: expected RGBA-like -> YUV420 conversion");
     }
-    ValidateEvenSize(constants.dstWidth, constants.dstHeight, DXGI_FORMAT_NV12, "D3D12FormatConverter::RecordRgbToNv12");
+    ValidateEvenSize(constants.dstWidth, constants.dstHeight, static_cast<DXGI_FORMAT>(constants.dstFormat), "D3D12FormatConverter::RecordRgbToYuv420");
 
     auto srcViews = CreateRgbaTextureViewSet(*m_context, src, true, false, static_cast<DXGI_FORMAT>(constants.srcFormat));
-    auto dstViews = CreateNv12UavViewSet(*m_context, dst);
+    auto dstViews = CreateYuv420UavViewSet(*m_context, dst);
 
     TransitionForPass(commandContext, src, dst, state,
         D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
     SetCommonComputeState(*m_context, commandContext, srcViews.range);
-    m_pipelines->rgbToNv12.Bind(commandContext);
-    commandContext.GetCommandList()->SetComputeRootDescriptorTable(m_pipelines->rgbToNv12.SrvTableIndex(), srcViews.Gpu(srcViews.srvIndex));
-    commandContext.GetCommandList()->SetComputeRootDescriptorTable(m_pipelines->rgbToNv12.UavTableIndex(), dstViews.Gpu(dstViews.yUavIndex));
-    SetRootConstants(m_pipelines->rgbToNv12, commandContext, constants);
-    m_pipelines->rgbToNv12.Dispatch(commandContext, DivideRoundUp(constants.dstWidth, kThreadGroupX), DivideRoundUp(constants.dstHeight, kThreadGroupY), 1);
+    m_pipelines->rgbToYuv420.Bind(commandContext);
+    commandContext.GetCommandList()->SetComputeRootDescriptorTable(m_pipelines->rgbToYuv420.SrvTableIndex(), srcViews.Gpu(srcViews.srvIndex));
+    commandContext.GetCommandList()->SetComputeRootDescriptorTable(m_pipelines->rgbToYuv420.UavTableIndex(), dstViews.Gpu(dstViews.yUavIndex));
+    SetRootConstants(m_pipelines->rgbToYuv420, commandContext, constants);
+    m_pipelines->rgbToYuv420.Dispatch(commandContext, DivideRoundUp(constants.dstWidth, kThreadGroupX), DivideRoundUp(constants.dstHeight, kThreadGroupY), 1);
 
     TransitionAfterPass(commandContext, src, dst, state,
         D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,

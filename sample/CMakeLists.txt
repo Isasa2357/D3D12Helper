@@ -54,12 +54,21 @@ endif()
 function(add_d3d12helper_sample target_name)
     add_executable(${target_name} ${ARGN})
     target_link_libraries(${target_name} PRIVATE D3D12Helper::D3D12Helper)
+    target_compile_definitions(${target_name} PRIVATE
+        D3D12HELPER_SAMPLE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    )
 
     if(MSVC)
         target_compile_options(${target_name} PRIVATE /utf-8 /EHsc)
     endif()
 
     d3d12helper_copy_dxc_runtime(${target_name})
+
+    add_custom_command(TARGET ${target_name} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/../shaders"
+            "$<TARGET_FILE_DIR:${target_name}>/shaders"
+    )
 endfunction()
 
 add_d3d12helper_sample(D3D12Sample_01_HelloDevice         01_HelloDevice/main.cpp)
@@ -68,3 +77,5 @@ add_d3d12helper_sample(D3D12Sample_03_HelloTriangle       03_HelloTriangle/main.
 add_d3d12helper_sample(D3D12Sample_04_ParallelCompute     04_ParallelCompute/main.cpp)
 add_d3d12helper_sample(D3D12Sample_05_BufferCompute       05_BufferCompute/main.cpp)
 add_d3d12helper_sample(D3D12Sample_06_UploadRingStreaming 06_UploadRingStreaming/main.cpp)
+add_d3d12helper_sample(D3D12Sample_07_ProcessingFusedConvertResize 07_ProcessingFusedConvertResize/main.cpp)
+add_d3d12helper_sample(D3D12Sample_08_ProcessingP010Rgba16 08_ProcessingP010Rgba16/main.cpp)
