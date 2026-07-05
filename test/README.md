@@ -15,6 +15,8 @@
 | `test_CommandContext.cpp` | `CommandContext` | Reset/Close ライフサイクル | 必要 |
 | `test_DescriptorAllocator.cpp` | `DescriptorAllocator` | 確保・容量超過・RTV | 必要 |
 | `test_Resource.cpp` | `Resource` | バッファ/テクスチャ生成・状態追跡 | 必要 |
+| `test_HelperViews.cpp` | `HelperViews` | Buffer SRV/UAV、CBV、RTV、DSV 作成ヘルパ | 必要 |
+| `test_SharedResource.cpp` | `SharedResource` | 共有可能 Texture2D と共有 handle 作成 | 必要 |
 | `test_UploadReadback.cpp` | `UploadReadback` | Upload→GPU→Readback 往復 | 必要 |
 | `test_UploadRing.cpp` | `UploadRing` | 確保・会計・回収 | 必要 |
 | `test_ShaderCompiler.cpp` | `ShaderCompiler` | DXC/D3DCompile・失敗時例外 | DXC |
@@ -34,25 +36,26 @@
 ルートからビルドすると、既定でテストも一緒にビルドされます（`D3D12HELPER_BUILD_TESTS=ON`）。
 
 ```bat
-cmake -S . -B build -A x64
-cmake --build build --config Release
+cmake -S . -B out/build/default -G "Visual Studio 17 2022" -A x64 ^
+  -DD3D12HELPER_BUILD_TESTS=ON
 
-:: CTest で機能単位に実行
-ctest --test-dir build -C Release --output-on-failure
+cmake --build out/build/default --config Debug
 
-:: 特定機能だけ
-ctest --test-dir build -C Release -R ComputePipeline --output-on-failure
+ctest --test-dir out/build/default -C Debug --output-on-failure
+```
+
+特定機能だけ実行する場合:
+
+```bat
+ctest --test-dir out/build/default -C Debug -R HelperViews --output-on-failure
+ctest --test-dir out/build/default -C Debug -R SharedResource --output-on-failure
 ```
 
 実行ファイルを直接呼ぶこともできます。
 
 ```bat
-:: 全 suite
-build\test\Release\d3d12helper_tests.exe
-
-:: 特定 suite だけ
-build\test\Release\d3d12helper_tests.exe FormatUtil
-build\test\Release\d3d12helper_tests.exe ComputePipeline
+out\build\default\test\Debug\d3d12helper_tests.exe
+out\build\default\test\Debug\d3d12helper_tests.exe SharedResource
 ```
 
 ## 環境による SKIP

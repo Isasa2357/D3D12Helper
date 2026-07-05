@@ -1,0 +1,114 @@
+# D3D12Helper local/generated files
+# Keep source, headers, docs, samples, tests, and CMake files trackable.
+
+# -----------------------------------------------------------------------------
+# CMake build trees
+# -----------------------------------------------------------------------------
+/build/
+/out/
+/cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+DartConfiguration.tcl
+Testing/
+
+# CMake user-local files
+CMakeUserPresets.json
+*.cmake.user
+
+# -----------------------------------------------------------------------------
+# Visual Studio / MSVC local files
+# -----------------------------------------------------------------------------
+.vs/
+*.user
+*.suo
+*.rsuser
+*.VC.db
+*.VC.VC.opendb
+*.opendb
+*.aps
+*.ncb
+*.sdf
+*.opensdf
+ipch/
+
+# Visual Studio generated solution/project files when generated outside out/build.
+# Do not rely on these for the source tree; generate them with CMake instead.
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# MSVC build artifacts
+*.obj
+*.pdb
+*.idb
+*.ilk
+*.ipdb
+*.iobj
+*.pch
+*.res
+*.tlog
+*.lastbuildstate
+*.log
+*.exp
+*.lib
+*.dll
+*.exe
+*.appx
+*.appxsym
+*.msix
+*.msixsym
+
+# Common configuration output directories, in case an in-source generator is used
+/Debug/
+/Release/
+/RelWithDebInfo/
+/MinSizeRel/
+/x64/
+/x86/
+/ARM64/
+
+# -----------------------------------------------------------------------------
+# Test/runtime generated files
+# -----------------------------------------------------------------------------
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+*.gcda
+*.gcno
+*.profraw
+*.profdata
+
+# Runtime shader/output scratch files
+*.cso
+*.dxil
+*.hlsl.bin
+*.dump
+*.tmp
+*.temp
+
+# -----------------------------------------------------------------------------
+# NuGet / DXC runtime packages downloaded locally
+# -----------------------------------------------------------------------------
+/packages/
+*.nupkg
+
+# -----------------------------------------------------------------------------
+# Editor / OS noise
+# -----------------------------------------------------------------------------
+.vscode/.browse.VC.db*
+.vscode/ipch/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# -----------------------------------------------------------------------------
+# Local overlay folders copied from ChatGPT answers
+# -----------------------------------------------------------------------------
+D3D12Helper_*_overlay/
+D3D12Helper_*_overlay.zip
