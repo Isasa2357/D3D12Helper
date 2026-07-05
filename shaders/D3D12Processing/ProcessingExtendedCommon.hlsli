@@ -1,5 +1,5 @@
-#ifndef D3D12_PROCESSING_COMMON_HLSLI
-#define D3D12_PROCESSING_COMMON_HLSLI
+#ifndef D3D12_PROCESSING_EXTENDED_COMMON_HLSLI
+#define D3D12_PROCESSING_EXTENDED_COMMON_HLSLI
 
 #define THREAD_GROUP_X 16
 #define THREAD_GROUP_Y 16
@@ -10,12 +10,15 @@ static const uint DXGI_FORMAT_NV12_VALUE = 103;
 
 static const uint PROCESSING_FILTER_POINT = 0;
 static const uint PROCESSING_FILTER_LINEAR = 1;
-static const uint PROCESSING_MATRIX_IDENTITY = 0;
-static const uint PROCESSING_MATRIX_BT601 = 1;
-static const uint PROCESSING_MATRIX_BT709 = 2;
-static const uint PROCESSING_MATRIX_BT2020 = 3;
-static const uint PROCESSING_RANGE_FULL = 0;
-static const uint PROCESSING_RANGE_LIMITED = 1;
+static const uint PROCESSING_REMAP_COORD_ABSOLUTE_PIXELS = 0;
+static const uint PROCESSING_REMAP_COORD_NORMALIZED_ZERO_TO_ONE = 1;
+static const uint PROCESSING_REMAP_BORDER_CLAMP = 0;
+static const uint PROCESSING_REMAP_BORDER_CONSTANT = 1;
+
+static const uint PROCESSING_COMPOSITE_COPY = 0;
+static const uint PROCESSING_COMPOSITE_ALPHA_BLEND = 1;
+static const uint PROCESSING_COMPOSITE_PREMULTIPLIED_ALPHA = 2;
+static const uint PROCESSING_COMPOSITE_ADD = 3;
 
 cbuffer ProcessingConstants : register(b0)
 {
@@ -39,6 +42,20 @@ cbuffer ProcessingConstants : register(b0)
     float ScaleY;
     uint Reserved0;
     uint Reserved1;
+
+    uint MapWidth;
+    uint MapHeight;
+    uint CoordinateMode;
+    uint BorderMode;
+    int OverlayX;
+    int OverlayY;
+    uint OverlayFormat;
+    uint BlendMode;
+    float Opacity;
+    uint Reserved2;
+    uint Reserved3;
+    uint Reserved4;
+    float4 BorderColor;
 };
 
 bool InRect(uint2 p, uint w, uint h)
@@ -58,15 +75,11 @@ int3 LoadCoord(uint2 p)
 
 float4 ToLogicalRgba(float4 v, uint format)
 {
-    // Typed SRV reads already expose components in logical RGBA order for these
-    // formats.  Do not manually swizzle B8G8R8A8 here.
     return v;
 }
 
 float4 FromLogicalRgba(float4 v, uint format)
 {
-    // Typed UAV writes perform the format conversion to the resource memory
-    // layout.  Shader code should keep using logical RGBA values.
     return v;
 }
 

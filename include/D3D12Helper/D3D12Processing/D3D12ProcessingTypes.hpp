@@ -46,6 +46,23 @@ enum class ProcessingAlphaMode : UINT {
     Premultiplied = 2,
 };
 
+enum class RemapCoordinateMode : UINT {
+    AbsolutePixels = 0,
+    NormalizedZeroToOne = 1,
+};
+
+enum class RemapBorderMode : UINT {
+    Clamp = 0,
+    Constant = 1,
+};
+
+enum class CompositeBlendMode : UINT {
+    Copy = 0,
+    AlphaBlend = 1,
+    PremultipliedAlpha = 2,
+    Add = 3,
+};
+
 struct ProcessingColorDesc {
     ProcessingColorMatrix srcMatrix = ProcessingColorMatrix::BT709;
     ProcessingColorRange  srcRange  = ProcessingColorRange::Full;
@@ -68,11 +85,43 @@ struct ResizeDesc {
     ProcessingRect dstRect = {};
 };
 
+struct RemapDesc {
+    DXGI_FORMAT srcFormat = DXGI_FORMAT_UNKNOWN;
+    DXGI_FORMAT dstFormat = DXGI_FORMAT_UNKNOWN;
+    DXGI_FORMAT mapFormat = DXGI_FORMAT_R32G32_FLOAT;
+    ProcessingFilter filter = ProcessingFilter::Linear;
+    ProcessingRect dstRect = {};
+    RemapCoordinateMode coordinateMode = RemapCoordinateMode::AbsolutePixels;
+    RemapBorderMode borderMode = RemapBorderMode::Clamp;
+    float borderColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+};
+
+struct CompositeDesc {
+    DXGI_FORMAT baseFormat = DXGI_FORMAT_UNKNOWN;
+    DXGI_FORMAT overlayFormat = DXGI_FORMAT_UNKNOWN;
+    DXGI_FORMAT dstFormat = DXGI_FORMAT_UNKNOWN;
+    ProcessingRect baseRect = {};
+    ProcessingRect overlayRect = {};
+    ProcessingRect dstRect = {};
+    CompositeBlendMode blendMode = CompositeBlendMode::AlphaBlend;
+    float opacity = 1.0f;
+};
+
 struct D3D12ProcessingStateDesc {
     D3D12_RESOURCE_STATES srcBefore = D3D12_RESOURCE_STATE_COMMON;
     D3D12_RESOURCE_STATES srcAfter  = D3D12_RESOURCE_STATE_COMMON;
     D3D12_RESOURCE_STATES dstBefore = D3D12_RESOURCE_STATE_COMMON;
     D3D12_RESOURCE_STATES dstAfter  = D3D12_RESOURCE_STATE_COMMON;
+    bool useExplicitStates = false;
+};
+
+struct D3D12ProcessingTwoInputStateDesc {
+    D3D12_RESOURCE_STATES src0Before = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES src0After  = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES src1Before = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES src1After  = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES dstBefore  = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES dstAfter   = D3D12_RESOURCE_STATE_COMMON;
     bool useExplicitStates = false;
 };
 
@@ -110,10 +159,13 @@ public:
 bool IsRgbaLikeFormat(DXGI_FORMAT format) noexcept;
 bool IsSupportedProcessingFormat(DXGI_FORMAT format) noexcept;
 bool IsSupportedRgbaOutputFormat(DXGI_FORMAT format) noexcept;
+bool IsSupportedRemapMapFormat(DXGI_FORMAT format) noexcept;
+bool IsSupportedCompositeFormat(DXGI_FORMAT format) noexcept;
 
 ProcessingRect ResolveRect(const ProcessingRect& rect, UINT fallbackWidth, UINT fallbackHeight);
 void ValidateRectInside(const ProcessingRect& rect, UINT width, UINT height, const char* functionName, const char* argumentName);
 void ValidateEvenSize(UINT width, UINT height, DXGI_FORMAT format, const char* functionName);
+void ValidateOpacity(float opacity, const char* functionName);
 
 } // namespace Processing
 } // namespace D3D12CoreLib

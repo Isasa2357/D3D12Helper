@@ -8,3 +8,5 @@
 #include "D3D12TextureViews.hpp"
 #include "D3D12FormatConverter.hpp"
 #include "D3D12Resize.hpp"
+#include "D3D12Remap.hpp"
+#include "D3D12Composite.hpp"

@@ -19,6 +19,14 @@ bool IsSupportedRgbaOutputFormat(DXGI_FORMAT format) noexcept {
     return IsRgbaLikeFormat(format);
 }
 
+bool IsSupportedRemapMapFormat(DXGI_FORMAT format) noexcept {
+    return format == DXGI_FORMAT_R32G32_FLOAT;
+}
+
+bool IsSupportedCompositeFormat(DXGI_FORMAT format) noexcept {
+    return IsRgbaLikeFormat(format);
+}
+
 ProcessingRect ResolveRect(const ProcessingRect& rect, UINT fallbackWidth, UINT fallbackHeight) {
     ProcessingRect r = rect;
     if (r.width == 0) {
@@ -60,6 +68,14 @@ void ValidateEvenSize(UINT width, UINT height, DXGI_FORMAT format, const char* f
     if (FormatUtil::RequiresEvenSize(format) && ((width & 1u) != 0u || (height & 1u) != 0u)) {
         std::ostringstream os;
         os << functionName << ": format requires even width and height";
+        throw ValidationError(os.str());
+    }
+}
+
+void ValidateOpacity(float opacity, const char* functionName) {
+    if (!(opacity >= 0.0f && opacity <= 1.0f)) {
+        std::ostringstream os;
+        os << functionName << ": opacity must be in [0, 1]";
         throw ValidationError(os.str());
     }
 }
