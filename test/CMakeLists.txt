@@ -86,6 +86,7 @@ set(D3D12HELPER_TEST_SUITES
     Subresource
     Core
     Fence
+    SharedFence
     CommandContext
     DescriptorAllocator
     Resource
