@@ -58,17 +58,19 @@ int3 LoadCoord(uint2 p)
 
 float4 ToLogicalRgba(float4 v, uint format)
 {
-    if (format == DXGI_FORMAT_B8G8R8A8_UNORM_VALUE) {
-        return v.bgra;
-    }
+    // HLSL typed texture load returns components in shader RGBA order.
+    // DXGI_FORMAT_B8G8R8A8_UNORM describes memory layout; the SRV/UAV format
+    // conversion already maps it to/from float4(R, G, B, A).  Do not manually
+    // swizzle here, otherwise BGRA UAV writes become double-swizzled.
+    (void)format;
     return v;
 }
 
 float4 FromLogicalRgba(float4 v, uint format)
 {
-    if (format == DXGI_FORMAT_B8G8R8A8_UNORM_VALUE) {
-        return v.bgra;
-    }
+    // See ToLogicalRgba.  The typed UAV store performs the BGRA memory layout
+    // conversion for DXGI_FORMAT_B8G8R8A8_UNORM.
+    (void)format;
     return v;
 }
 
