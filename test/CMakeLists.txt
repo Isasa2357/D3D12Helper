@@ -62,12 +62,21 @@ file(GLOB D3D12HELPER_TEST_SOURCES CONFIGURE_DEPENDS
 add_executable(d3d12helper_tests ${D3D12HELPER_TEST_SOURCES})
 target_include_directories(d3d12helper_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(d3d12helper_tests PRIVATE D3D12Helper::D3D12Helper)
+target_compile_definitions(d3d12helper_tests PRIVATE
+    D3D12HELPER_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+)
 
 if(MSVC)
     target_compile_options(d3d12helper_tests PRIVATE /utf-8 /EHsc)
 endif()
 
 d3d12helper_copy_dxc_runtime(d3d12helper_tests)
+
+add_custom_command(TARGET d3d12helper_tests POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/../shaders"
+        "$<TARGET_FILE_DIR:d3d12helper_tests>/shaders"
+)
 
 set(D3D12HELPER_TEST_SUITES
     FormatUtil
@@ -86,6 +95,7 @@ set(D3D12HELPER_TEST_SUITES
     ShaderCompiler
     ComputePipeline
     GraphicsPipeline
+    Processing
 )
 
 foreach(suite IN LISTS D3D12HELPER_TEST_SUITES)
