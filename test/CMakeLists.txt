@@ -129,6 +129,7 @@ set(D3D12HELPER_TEST_SUITES
     ProcessingRegionEffect
     ProcessingRegionBlur
     ProcessingColorAdjust
+    ProcessingKernelFilter
 )
 
 foreach(suite IN LISTS D3D12HELPER_TEST_SUITES)
