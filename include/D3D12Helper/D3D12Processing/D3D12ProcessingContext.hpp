@@ -3,9 +3,9 @@
 // D3D12ProcessingContext.hpp
 // Shared state and capability cache for the D3D12 Processing Layer.
 //
-#include "D3D12ProcessingTypes.hpp"
-#include "../D3D12Core/D3D12Core.hpp"
-#include "../D3D12Framework/D3D12DescriptorAllocator.hpp"
+#include <D3D12Helper/D3D12Processing/D3D12ProcessingTypes.hpp>
+#include <D3D12Helper/D3D12Core/D3D12Core.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12DescriptorAllocator.hpp>
 
 #include <filesystem>
 

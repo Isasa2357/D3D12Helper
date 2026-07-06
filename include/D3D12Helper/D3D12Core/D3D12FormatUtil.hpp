@@ -2,7 +2,7 @@
 //
 // D3D12FormatUtil.hpp - DXGI_FORMAT 判定ヘルパ
 //
-#include "D3D12Common.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Common.hpp>
 
 namespace D3D12CoreLib {
 namespace FormatUtil {

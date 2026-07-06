@@ -13,9 +13,9 @@
 //   3. フル制御経路   : InitializeRaw に D3D12_GRAPHICS_PIPELINE_STATE_DESC を丸ごと渡す。
 //                       ライブラリは PSO 生成と Root Signature 保持だけ行う。
 //
-#include "../D3D12Core/D3D12CommandContext.hpp"
-#include "../D3D12Core/D3D12Common.hpp"
-#include "D3D12ShaderCompiler.hpp"   // ShaderBytecode
+#include <D3D12Helper/D3D12Core/D3D12CommandContext.hpp>
+#include <D3D12Helper/D3D12Core/D3D12Common.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12ShaderCompiler.hpp>   // ShaderBytecode
 
 #include <vector>
 

@@ -2,7 +2,7 @@
 // test_FormatUtil.cpp - FormatUtil のフォーマット判定（デバイス不要）
 //
 #include "TestFramework.hpp"
-#include "D3D12Core/D3D12FormatUtil.hpp"
+#include <D3D12Helper/D3D12Core/D3D12FormatUtil.hpp>
 
 using namespace D3D12CoreLib;
 

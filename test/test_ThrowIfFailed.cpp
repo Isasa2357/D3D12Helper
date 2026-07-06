@@ -2,7 +2,7 @@
 // test_ThrowIfFailed.cpp - HRESULT 例外化（デバイス不要）
 //
 #include "TestFramework.hpp"
-#include "D3D12Core/ThrowIfFailed.hpp"
+#include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
 
 #include <string>
 

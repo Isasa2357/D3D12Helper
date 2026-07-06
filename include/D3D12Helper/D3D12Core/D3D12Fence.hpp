@@ -17,7 +17,7 @@
 //   ただし Signal() 自体は1スレッドから呼ぶ想定（Queue を独占するスレッドが呼ぶ）。
 //   Wait() / WaitIdle() は任意のスレッドから呼んでよい。
 //
-#include "D3D12Common.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Common.hpp>
 
 #include <atomic>
 

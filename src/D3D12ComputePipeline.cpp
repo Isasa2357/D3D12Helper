@@ -1,8 +1,8 @@
 //
 // D3D12ComputePipeline.cpp
 //
-#include "D3D12ComputePipeline.hpp"
-#include "../D3D12Core/ThrowIfFailed.hpp"
+#include <D3D12Helper/D3D12Framework/D3D12ComputePipeline.hpp>
+#include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
 
 #include <d3dcompiler.h>  // D3D12SerializeRootSignature
 #include <stdexcept>

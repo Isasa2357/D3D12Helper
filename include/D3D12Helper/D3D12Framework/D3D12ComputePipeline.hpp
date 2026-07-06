@@ -12,9 +12,9 @@
 //   numXxx を 0 にすればその slot は省略される。
 //   より複雑な Root Signature が必要なら、Initialize(rootSig, bytecode) を使う。
 //
-#include "../D3D12Core/D3D12CommandContext.hpp"
-#include "../D3D12Core/D3D12Common.hpp"
-#include "D3D12ShaderCompiler.hpp"
+#include <D3D12Helper/D3D12Core/D3D12CommandContext.hpp>
+#include <D3D12Helper/D3D12Core/D3D12Common.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12ShaderCompiler.hpp>
 
 namespace D3D12CoreLib {
 

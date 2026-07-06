@@ -14,9 +14,9 @@
 //       finalState へ遷移する。毎フレーム再アップロードするので、2 フレーム目以降は
 //       冒頭で finalState -> COPY_DEST に戻している。
 //
-#include "D3D12Core/D3D12Core.hpp"
-#include "D3D12Core/D3D12Barrier.hpp"
-#include "D3D12Framework/D3D12Framework.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Core.hpp>
+#include <D3D12Helper/D3D12Core/D3D12Barrier.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12Framework.hpp>
 
 #include <array>
 #include <cstdint>

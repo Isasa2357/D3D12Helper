@@ -2,7 +2,7 @@
 // test_Subresource.cpp - D3D12 subresource index helper
 //
 #include "TestFramework.hpp"
-#include "D3D12Core/D3D12Subresource.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Subresource.hpp>
 
 using namespace D3D12CoreLib;
 

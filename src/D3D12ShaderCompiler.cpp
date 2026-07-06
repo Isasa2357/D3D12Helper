@@ -1,8 +1,8 @@
 //
 // D3D12ShaderCompiler.cpp
 //
-#include "D3D12ShaderCompiler.hpp"
-#include "../D3D12Core/ThrowIfFailed.hpp"
+#include <D3D12Helper/D3D12Framework/D3D12ShaderCompiler.hpp>
+#include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
 
 #include <d3dcompiler.h>
 #include <dxcapi.h>

@@ -20,10 +20,10 @@
 //   DescriptorAllocator / CreateTexture2DSrv / CreateTexture2DUav
 //   MakeTransitionBarrier / ReadbackBuffer / FormatUtil
 //
-#include "D3D12Core/D3D12Core.hpp"
-#include "D3D12Core/D3D12Debug.hpp"     // D3D12Debug::SetDebugName
-#include "D3D12Core/D3D12Barrier.hpp"   // MakeTransitionBarrier
-#include "D3D12Framework/D3D12Framework.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Core.hpp>
+#include <D3D12Helper/D3D12Core/D3D12Debug.hpp>     // D3D12Debug::SetDebugName
+#include <D3D12Helper/D3D12Core/D3D12Barrier.hpp>   // MakeTransitionBarrier
+#include <D3D12Helper/D3D12Framework/D3D12Framework.hpp>
 
 #include <cmath>
 #include <cstdint>

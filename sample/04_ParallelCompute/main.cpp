@@ -16,9 +16,9 @@
 // 自分のコマンドリストに記録する。共有する ComputePipeline は read-only なので安全。
 // main は全リストを 1 回の ExecuteCommandLists で実行し、1 回だけ Signal して待つ。
 //
-#include "D3D12Core/D3D12Core.hpp"
-#include "D3D12Core/D3D12Barrier.hpp"
-#include "D3D12Framework/D3D12Framework.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Core.hpp>
+#include <D3D12Helper/D3D12Core/D3D12Barrier.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12Framework.hpp>
 
 #include <cstdint>
 #include <cstdlib>

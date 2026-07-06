@@ -1,6 +1,6 @@
 #include "TestCommon.hpp"
-#include "D3D12Processing/D3D12Processing.hpp"
-#include "D3D12Core/D3D12Barrier.hpp"
+#include <D3D12Helper/D3D12Processing/D3D12Processing.hpp>
+#include <D3D12Helper/D3D12Core/D3D12Barrier.hpp>
 
 #include <array>
 #include <cstdint>

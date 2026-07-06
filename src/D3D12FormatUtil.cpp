@@ -1,7 +1,7 @@
 //
 // D3D12FormatUtil.cpp
 //
-#include "D3D12FormatUtil.hpp"
+#include <D3D12Helper/D3D12Core/D3D12FormatUtil.hpp>
 
 namespace D3D12CoreLib {
 namespace FormatUtil {

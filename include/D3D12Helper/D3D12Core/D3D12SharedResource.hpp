@@ -4,7 +4,7 @@
 // 共有 Handle の作成 / オープン（D3D11/D3D12共有・外部API連携の低レイヤ補助）。
 // D3D12Core 自体は外部 API（CUDA/Varjo等）に依存しない。開く側の処理は別モジュールに置く。
 //
-#include "D3D12Common.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Common.hpp>
 
 namespace D3D12CoreLib {
 

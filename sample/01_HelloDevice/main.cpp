@@ -9,9 +9,9 @@
 //
 // ウィンドウも GPU 実行も不要なので、D3D12 が動く環境かどうかの確認にも使える。
 //
-#include "D3D12Core/D3D12Core.hpp"    // インクルードパスに include/ を通すこと
-#include "D3D12Core/D3D12Debug.hpp"   // D3D12Debug::SetDebugName
-#include "D3D12Core/DxgiUtil.hpp"     // LuidToWString
+#include <D3D12Helper/D3D12Core/D3D12Core.hpp>    // インクルードパスに include/ を通すこと
+#include <D3D12Helper/D3D12Core/D3D12Debug.hpp>   // D3D12Debug::SetDebugName
+#include <D3D12Helper/D3D12Core/DxgiUtil.hpp>     // LuidToWString
 
 #include <iostream>
 #include <string>

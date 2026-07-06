@@ -3,11 +3,11 @@
 // D3D12FusedPipeline.hpp
 // One-dispatch fused Processing passes.
 //
-#include "D3D12ProcessingContext.hpp"
-#include "D3D12ProcessingShaderCache.hpp"
-#include "D3D12TextureViews.hpp"
-#include "../D3D12Core/D3D12CommandContext.hpp"
-#include "../D3D12Framework/D3D12ComputePipeline.hpp"
+#include <D3D12Helper/D3D12Processing/D3D12ProcessingContext.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12ProcessingShaderCache.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12TextureViews.hpp>
+#include <D3D12Helper/D3D12Core/D3D12CommandContext.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12ComputePipeline.hpp>
 
 #include <memory>
 

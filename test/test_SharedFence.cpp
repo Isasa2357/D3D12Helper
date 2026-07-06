@@ -8,7 +8,7 @@
 //
 #include "TestCommon.hpp"
 
-#include "D3D12Core/D3D12Fence.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Fence.hpp>
 
 using namespace D3D12CoreLib;
 

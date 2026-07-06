@@ -1,5 +1,5 @@
 #include "TestCommon.hpp"
-#include "D3D12Processing/D3D12Processing.hpp"
+#include <D3D12Helper/D3D12Processing/D3D12Processing.hpp>
 
 #include <array>
 #include <cstdint>

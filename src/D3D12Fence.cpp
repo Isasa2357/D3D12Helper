@@ -1,8 +1,8 @@
 ﻿//
 // D3D12Fence.cpp
 //
-#include "D3D12Fence.hpp"
-#include "ThrowIfFailed.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Fence.hpp>
+#include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
 
 #include <stdexcept>
 

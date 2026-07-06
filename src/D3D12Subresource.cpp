@@ -1,7 +1,7 @@
 //
 // D3D12Subresource.cpp
 //
-#include "D3D12Subresource.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Subresource.hpp>
 
 namespace D3D12CoreLib {
 

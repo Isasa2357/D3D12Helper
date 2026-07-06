@@ -1,9 +1,9 @@
 //
 // D3D12Helpers.cpp
 //
-#include "D3D12Helpers.hpp"
-#include "../D3D12Core/D3D12Barrier.hpp"
-#include "../D3D12Core/ThrowIfFailed.hpp"
+#include <D3D12Helper/D3D12Framework/D3D12Helpers.hpp>
+#include <D3D12Helper/D3D12Core/D3D12Barrier.hpp>
+#include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
 
 #include <cstring>
 #include <stdexcept>

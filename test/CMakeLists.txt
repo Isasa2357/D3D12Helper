@@ -37,11 +37,7 @@ if(NOT TARGET D3D12Helper)
 
     target_include_directories(D3D12Helper
         PUBLIC
-            "${D3D12HELPER_PUBLIC_INCLUDE_DIR}"
             "${D3D12HELPER_INCLUDE_DIR}"
-        PRIVATE
-            "${D3D12HELPER_CORE_INCLUDE_DIR}"
-            "${D3D12HELPER_FRAMEWORK_INCLUDE_DIR}"
     )
 
     target_compile_definitions(D3D12Helper PUBLIC WIN32_LEAN_AND_MEAN NOMINMAX)

@@ -3,8 +3,8 @@
 // D3D12ProcessingShaderCache.hpp
 // Runtime shader compiler/cache for Processing Layer HLSL files.
 //
-#include "D3D12ProcessingContext.hpp"
-#include "../D3D12Framework/D3D12ShaderCompiler.hpp"
+#include <D3D12Helper/D3D12Processing/D3D12ProcessingContext.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12ShaderCompiler.hpp>
 
 #include <string>
 #include <unordered_map>

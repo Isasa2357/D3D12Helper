@@ -15,10 +15,10 @@
 //                   （本サンプルは単一三角形なのでカリング無効に上書きしている）
 //   3. フル制御   : pipeline.InitializeRaw(device, rootSig, fullPsoDesc)
 //
-#include "D3D12Core/D3D12Core.hpp"
-#include "D3D12Core/D3D12Barrier.hpp"
-#include "D3D12Core/ThrowIfFailed.hpp"
-#include "D3D12Framework/D3D12Framework.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Core.hpp>
+#include <D3D12Helper/D3D12Core/D3D12Barrier.hpp>
+#include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12Framework.hpp>
 
 #include <array>
 #include <cstring>

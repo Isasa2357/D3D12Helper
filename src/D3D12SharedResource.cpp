@@ -1,8 +1,8 @@
 ﻿//
 // D3D12SharedResource.cpp
 //
-#include "D3D12SharedResource.hpp"
-#include "ThrowIfFailed.hpp"
+#include <D3D12Helper/D3D12Core/D3D12SharedResource.hpp>
+#include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
 
 #include <stdexcept>
 

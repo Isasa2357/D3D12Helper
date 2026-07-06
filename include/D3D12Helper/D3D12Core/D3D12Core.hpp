@@ -6,12 +6,12 @@
 // Descriptor や Resource 生成は上位ライブラリ D3D12Framework 側にある。
 // （Descriptor Allocator はサブシステムごとに生成する方針のため Core は所有しない）
 //
-#include "D3D12Common.hpp"
-#include "D3D12CoreConfig.hpp"
-#include "D3D12DeviceContext.hpp"
-#include "D3D12Queue.hpp"
-#include "D3D12CommandContext.hpp"
-#include "D3D12Subresource.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Common.hpp>
+#include <D3D12Helper/D3D12Core/D3D12CoreConfig.hpp>
+#include <D3D12Helper/D3D12Core/D3D12DeviceContext.hpp>
+#include <D3D12Helper/D3D12Core/D3D12Queue.hpp>
+#include <D3D12Helper/D3D12Core/D3D12CommandContext.hpp>
+#include <D3D12Helper/D3D12Core/D3D12Subresource.hpp>
 
 #include <memory>
 #include <optional>

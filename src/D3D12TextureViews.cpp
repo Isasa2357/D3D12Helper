@@ -1,5 +1,5 @@
-#include "D3D12Processing/D3D12TextureViews.hpp"
-#include "D3D12Core/D3D12FormatUtil.hpp"
+#include <D3D12Helper/D3D12Processing/D3D12TextureViews.hpp>
+#include <D3D12Helper/D3D12Core/D3D12FormatUtil.hpp>
 
 #include <sstream>
 

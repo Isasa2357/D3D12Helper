@@ -2,7 +2,7 @@
 //
 // D3D12DescriptorHandle.hpp - CPU/GPU ディスクリプタハンドルのペア
 //
-#include "../D3D12Core/D3D12Common.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Common.hpp>
 
 #include <cassert>
 

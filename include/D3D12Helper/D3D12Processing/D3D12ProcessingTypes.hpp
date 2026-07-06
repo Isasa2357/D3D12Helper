@@ -3,7 +3,7 @@
 // D3D12ProcessingTypes.hpp
 // Common public types for the D3D12 Processing Layer.
 //
-#include "../D3D12Core/D3D12Common.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Common.hpp>
 
 #include <stdexcept>
 #include <string>

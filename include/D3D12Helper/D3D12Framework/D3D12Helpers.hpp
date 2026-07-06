@@ -5,11 +5,11 @@
 // 上位サブシステム（Window / D3D12Camera 等）は「core を1つ渡して1行呼ぶ」だけで
 // D3D12 リソースを得られる。リソースの所有権は呼び出し側（戻り値）に渡る。
 //
-#include "../D3D12Core/D3D12Core.hpp"
-#include "../D3D12Core/D3D12FormatUtil.hpp"
-#include "D3D12Resource.hpp"
-#include "D3D12UploadBuffer.hpp"
-#include "D3D12UploadRing.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Core.hpp>
+#include <D3D12Helper/D3D12Core/D3D12FormatUtil.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12Resource.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12UploadBuffer.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12UploadRing.hpp>
 
 #include <cstdint>
 #include <vector>

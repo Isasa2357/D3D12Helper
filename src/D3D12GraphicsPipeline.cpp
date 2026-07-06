@@ -1,8 +1,8 @@
 //
 // D3D12GraphicsPipeline.cpp
 //
-#include "D3D12GraphicsPipeline.hpp"
-#include "../D3D12Core/ThrowIfFailed.hpp"
+#include <D3D12Helper/D3D12Framework/D3D12GraphicsPipeline.hpp>
+#include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
 
 #include <climits>   // UINT_MAX
 #include <stdexcept>

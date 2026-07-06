@@ -9,10 +9,10 @@
 //   - Root Descriptor（ディスクリプタヒープ不要で SRV/UAV をバインド）
 //   - バッファのリードバック検証
 //
-#include "D3D12Core/D3D12Core.hpp"
-#include "D3D12Core/D3D12Barrier.hpp"
-#include "D3D12Core/ThrowIfFailed.hpp"
-#include "D3D12Framework/D3D12Framework.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Core.hpp>
+#include <D3D12Helper/D3D12Core/D3D12Barrier.hpp>
+#include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12Framework.hpp>
 
 #include <cmath>
 #include <cstring>

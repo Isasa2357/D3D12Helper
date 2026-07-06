@@ -2,7 +2,7 @@
 // test_Barrier.cpp - Resource Barrier 生成ヘルパ（デバイス不要）
 //
 #include "TestFramework.hpp"
-#include "D3D12Core/D3D12Barrier.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Barrier.hpp>
 
 using namespace D3D12CoreLib;
 

@@ -10,7 +10,7 @@
 //
 // 戻り値の ShaderBytecode は所有権を持つ。D3D12_SHADER_BYTECODE は AsD3D12() で得る。
 //
-#include "../D3D12Core/D3D12Common.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Common.hpp>
 
 #include <filesystem>
 #include <string>

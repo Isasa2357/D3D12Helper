@@ -45,14 +45,7 @@ add_library(D3D12Helper::D3D12Helper ALIAS D3D12Helper)
 
 target_include_directories(D3D12Helper
     PUBLIC
-        # Existing samples/tests use: #include "D3D12Core/D3D12Core.hpp"
-        "${D3D12HELPER_PUBLIC_INCLUDE_DIR}"
-        # Also allow consumers to use: #include "D3D12Helper/D3D12Core/D3D12Core.hpp"
         "${D3D12HELPER_INCLUDE_DIR}"
-    PRIVATE
-        # Implementation .cpp files include headers directly, e.g. "D3D12Core.hpp".
-        "${D3D12HELPER_CORE_INCLUDE_DIR}"
-        "${D3D12HELPER_FRAMEWORK_INCLUDE_DIR}"
 )
 
 target_compile_definitions(D3D12Helper

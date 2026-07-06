@@ -2,7 +2,7 @@
 // test_DxgiUtil.cpp - LUID ユーティリティ（デバイス不要）
 //
 #include "TestFramework.hpp"
-#include "D3D12Core/DxgiUtil.hpp"
+#include <D3D12Helper/D3D12Core/DxgiUtil.hpp>
 
 using namespace D3D12CoreLib;
 

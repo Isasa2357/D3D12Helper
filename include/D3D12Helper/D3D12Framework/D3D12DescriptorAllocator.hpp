@@ -7,9 +7,9 @@
 //           生成して使う。Reset のタイミングは各サブシステムが自分で管理すること。
 //           Thread Safe ではない（必要なら呼び出し側で排他する）。
 //
-#include "../D3D12Core/D3D12Common.hpp"
-#include "D3D12DescriptorHeap.hpp"
-#include "D3D12DescriptorHandle.hpp"
+#include <D3D12Helper/D3D12Core/D3D12Common.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12DescriptorHeap.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12DescriptorHandle.hpp>
 
 namespace D3D12CoreLib {
 

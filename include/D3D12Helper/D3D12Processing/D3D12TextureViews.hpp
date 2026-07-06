@@ -3,9 +3,9 @@
 // D3D12TextureViews.hpp
 // Processing-specific view sets built on Layer 2 full-desc view helpers.
 //
-#include "D3D12ProcessingContext.hpp"
-#include "../D3D12Framework/D3D12Helpers.hpp"
-#include "../D3D12Framework/D3D12Resource.hpp"
+#include <D3D12Helper/D3D12Processing/D3D12ProcessingContext.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12Helpers.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12Resource.hpp>
 
 namespace D3D12CoreLib {
 namespace Processing {
