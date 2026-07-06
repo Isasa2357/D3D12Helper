@@ -126,6 +126,13 @@ enum class MaskCombineMode : UINT {
     Subtract = 4,
 };
 
+enum class HeatmapMode : UINT {
+    Grayscale = 0,
+    RedGreen = 1,
+    BlueRed = 2,
+    TurboApprox = 3,
+};
+
 struct ProcessingColorDesc {
     ProcessingColorMatrix srcMatrix = ProcessingColorMatrix::BT709;
     ProcessingColorRange  srcRange  = ProcessingColorRange::Full;
@@ -295,6 +302,55 @@ struct MaskInvertDesc {
     ProcessingRect maskRect = {};
     ProcessingRect dstRect = {};
     MaskChannel channel = MaskChannel::Alpha;
+};
+
+struct ThresholdDesc {
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+    MaskChannel channel = MaskChannel::Luma;
+    float threshold = 0.5f;
+    bool invert = false;
+    float foregroundColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    float backgroundColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+};
+
+struct RangeThresholdDesc {
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+    MaskChannel channel = MaskChannel::Luma;
+    float minValue = 0.25f;
+    float maxValue = 0.75f;
+    bool invert = false;
+    float foregroundColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    float backgroundColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+};
+
+struct ConfidenceHeatmapDesc {
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+    MaskChannel channel = MaskChannel::Red;
+    HeatmapMode mode = HeatmapMode::TurboApprox;
+    float minValue = 0.0f;
+    float maxValue = 1.0f;
+    float opacity = 1.0f;
+};
+
+struct ClassColorMapDesc {
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+    MaskChannel channel = MaskChannel::Red;
+    float classScale = 255.0f;
+    UINT classCount = 16;
+    float opacity = 1.0f;
+};
+
+struct MaskOverlayDesc {
+    ProcessingRect maskRect = {};
+    ProcessingRect dstRect = {};
+    MaskChannel channel = MaskChannel::Alpha;
+    bool invert = false;
+    float overlayColor[4] = { 1.0f, 0.0f, 0.0f, 0.5f };
+    float opacity = 1.0f;
 };
 
 struct D3D12ProcessingStateDesc {
