@@ -11,4 +11,5 @@
 #include <D3D12Helper/D3D12Processing/D3D12Remap.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12Composite.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12Blur.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12RegionEffect.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12FusedPipeline.hpp>
