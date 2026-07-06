@@ -122,3 +122,5 @@ D3D12Helper_*_overlay.zip
 /build_and_test.cmd
 /build_test_and_push_if_passed.cmd
 /git_commit_push.cmd
+/tag_v0_2_0.cmd
+/build_test_tag_v0_2_0.cmd
