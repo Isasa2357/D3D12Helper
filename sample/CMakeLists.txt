@@ -45,6 +45,44 @@ if(NOT TARGET D3D12Helper)
     if(MSVC)
         target_compile_options(D3D12Helper PUBLIC /utf-8 /EHsc)
     endif()
+else()
+    get_filename_component(D3D12HELPER_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+endif()
+
+set(D3D12HELPER_SAMPLE_RUNTIME_TARGET D3D12HelperSampleRuntimeAssets)
+if(NOT TARGET ${D3D12HELPER_SAMPLE_RUNTIME_TARGET})
+    d3d12helper_find_dxc_runtime()
+
+    set(D3D12HELPER_SAMPLE_RUNTIME_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
+
+    set(D3D12HELPER_SAMPLE_RUNTIME_COMMANDS
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "${D3D12HELPER_SAMPLE_RUNTIME_DIR}/shaders"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/../shaders"
+            "${D3D12HELPER_SAMPLE_RUNTIME_DIR}/shaders"
+    )
+
+    if(D3D12HELPER_COPY_DXC_RUNTIME AND D3D12HELPER_DXCOMPILER_DLL)
+        list(APPEND D3D12HELPER_SAMPLE_RUNTIME_COMMANDS
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${D3D12HELPER_DXCOMPILER_DLL}"
+                "${D3D12HELPER_SAMPLE_RUNTIME_DIR}"
+        )
+    endif()
+
+    if(D3D12HELPER_COPY_DXC_RUNTIME AND D3D12HELPER_DXIL_DLL)
+        list(APPEND D3D12HELPER_SAMPLE_RUNTIME_COMMANDS
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${D3D12HELPER_DXIL_DLL}"
+                "${D3D12HELPER_SAMPLE_RUNTIME_DIR}"
+        )
+    endif()
+
+    add_custom_target(${D3D12HELPER_SAMPLE_RUNTIME_TARGET} ALL
+        ${D3D12HELPER_SAMPLE_RUNTIME_COMMANDS}
+        VERBATIM
+    )
 endif()
 
 function(add_d3d12helper_sample target_name)
@@ -58,13 +96,7 @@ function(add_d3d12helper_sample target_name)
         target_compile_options(${target_name} PRIVATE /utf-8 /EHsc)
     endif()
 
-    d3d12helper_copy_dxc_runtime(${target_name})
-
-    add_custom_command(TARGET ${target_name} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/../shaders"
-            "$<TARGET_FILE_DIR:${target_name}>/shaders"
-    )
+    add_dependencies(${target_name} ${D3D12HELPER_SAMPLE_RUNTIME_TARGET})
 endfunction()
 
 add_d3d12helper_sample(D3D12Sample_01_HelloDevice         01_HelloDevice/main.cpp)
@@ -75,3 +107,4 @@ add_d3d12helper_sample(D3D12Sample_05_BufferCompute       05_BufferCompute/main.
 add_d3d12helper_sample(D3D12Sample_06_UploadRingStreaming 06_UploadRingStreaming/main.cpp)
 add_d3d12helper_sample(D3D12Sample_07_ProcessingFusedConvertResize 07_ProcessingFusedConvertResize/main.cpp)
 add_d3d12helper_sample(D3D12Sample_08_ProcessingP010Rgba16 08_ProcessingP010Rgba16/main.cpp)
+add_d3d12helper_sample(D3D12Sample_09_ProcessingBlur 09_ProcessingBlur/main.cpp)

@@ -112,3 +112,13 @@ Desktop.ini
 # -----------------------------------------------------------------------------
 D3D12Helper_*_overlay/
 D3D12Helper_*_overlay.zip
+
+# -----------------------------------------------------------------------------
+# Local helper commands generated from ChatGPT patch ZIPs
+# -----------------------------------------------------------------------------
+# Do not ignore all *.cmd files because repository-maintained command scripts may
+# be intentionally committed under tools/ or another source-controlled folder.
+# These root-level helper commands are local workflow shortcuts only.
+/build_and_test.cmd
+/build_test_and_push_if_passed.cmd
+/git_commit_push.cmd

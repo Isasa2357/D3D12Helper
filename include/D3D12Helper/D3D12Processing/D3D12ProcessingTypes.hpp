@@ -63,6 +63,46 @@ enum class CompositeBlendMode : UINT {
     Add = 3,
 };
 
+enum class BlurMode : UINT {
+    Box = 0,
+    Gaussian = 1,
+};
+
+enum class BlurEdgeMode : UINT {
+    Clamp = 0,
+    Constant = 1,
+};
+
+enum class RegionShape : UINT {
+    Circle = 0,
+    Rect = 1,
+};
+
+enum class RegionSelection : UINT {
+    Inside = 0,
+    Outside = 1,
+};
+
+enum class RegionEffectMode : UINT {
+    Darken = 0,
+    Tint = 1,
+    Grayscale = 2,
+    Highlight = 3,
+    AlphaFade = 4,
+    Vignette = 5,
+};
+
+enum class KernelFilterMode : UINT {
+    Custom3x3 = 0,
+    Sharpen = 1,
+    EdgeDetect = 2,
+};
+
+enum class KernelEdgeMode : UINT {
+    Clamp = 0,
+    Constant = 1,
+};
+
 struct ProcessingColorDesc {
     ProcessingColorMatrix srcMatrix = ProcessingColorMatrix::BT709;
     ProcessingColorRange  srcRange  = ProcessingColorRange::Full;
@@ -118,6 +158,83 @@ struct CompositeDesc {
     float opacity = 1.0f;
 };
 
+struct BlurDesc {
+    BlurMode mode = BlurMode::Gaussian;
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+    UINT radius = 5;
+    float sigma = 2.0f;
+    BlurEdgeMode edgeMode = BlurEdgeMode::Clamp;
+    float borderColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+};
+
+struct RegionEffectDesc {
+    RegionShape shape = RegionShape::Circle;
+    RegionSelection selection = RegionSelection::Outside;
+    RegionEffectMode effect = RegionEffectMode::Darken;
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+
+    float centerX = 0.0f;
+    float centerY = 0.0f;
+    float radius = 0.0f;
+    float rectX = 0.0f;
+    float rectY = 0.0f;
+    float rectWidth = 0.0f;
+    float rectHeight = 0.0f;
+    float edgeSoftness = 0.0f;
+    float strength = 1.0f;
+    float tintColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+};
+
+struct RegionBlurDesc {
+    RegionShape shape = RegionShape::Circle;
+    RegionSelection selection = RegionSelection::Outside;
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+
+    float centerX = 0.0f;
+    float centerY = 0.0f;
+    float radius = 0.0f;
+    float rectX = 0.0f;
+    float rectY = 0.0f;
+    float rectWidth = 0.0f;
+    float rectHeight = 0.0f;
+    float edgeSoftness = 0.0f;
+    float blurStrength = 1.0f;
+
+    BlurMode blurMode = BlurMode::Gaussian;
+    UINT blurRadius = 5;
+    float blurSigma = 2.0f;
+    BlurEdgeMode blurEdgeMode = BlurEdgeMode::Clamp;
+};
+
+struct ColorAdjustDesc {
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+    float brightness = 0.0f;
+    float contrast = 1.0f;
+    float gamma = 1.0f;
+    float saturation = 1.0f;
+    bool preserveAlpha = true;
+};
+
+struct KernelFilterDesc {
+    KernelFilterMode mode = KernelFilterMode::Sharpen;
+    KernelEdgeMode edgeMode = KernelEdgeMode::Clamp;
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+    float kernel[9] = {
+        0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f,
+    };
+    float scale = 1.0f;
+    float bias = 0.0f;
+    bool preserveAlpha = true;
+    float borderColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+};
+
 struct D3D12ProcessingStateDesc {
     D3D12_RESOURCE_STATES srcBefore = D3D12_RESOURCE_STATE_COMMON;
     D3D12_RESOURCE_STATES srcAfter  = D3D12_RESOURCE_STATE_COMMON;
@@ -133,6 +250,16 @@ struct D3D12ProcessingTwoInputStateDesc {
     D3D12_RESOURCE_STATES src1After  = D3D12_RESOURCE_STATE_COMMON;
     D3D12_RESOURCE_STATES dstBefore  = D3D12_RESOURCE_STATE_COMMON;
     D3D12_RESOURCE_STATES dstAfter   = D3D12_RESOURCE_STATE_COMMON;
+    bool useExplicitStates = false;
+};
+
+struct D3D12ProcessingBlurStateDesc {
+    D3D12_RESOURCE_STATES srcBefore = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES srcAfter  = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES scratchBefore = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES scratchAfter  = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES dstBefore = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES dstAfter  = D3D12_RESOURCE_STATE_COMMON;
     bool useExplicitStates = false;
 };
 

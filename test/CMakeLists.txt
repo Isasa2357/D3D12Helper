@@ -49,6 +49,8 @@ if(NOT TARGET D3D12Helper)
 
     include(CTest)
     enable_testing()
+else()
+    get_filename_component(D3D12HELPER_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 endif()
 
 file(GLOB D3D12HELPER_TEST_SOURCES CONFIGURE_DEPENDS
@@ -66,13 +68,43 @@ if(MSVC)
     target_compile_options(d3d12helper_tests PRIVATE /utf-8 /EHsc)
 endif()
 
-d3d12helper_copy_dxc_runtime(d3d12helper_tests)
+set(D3D12HELPER_TEST_RUNTIME_TARGET D3D12HelperTestRuntimeAssets)
+if(NOT TARGET ${D3D12HELPER_TEST_RUNTIME_TARGET})
+    d3d12helper_find_dxc_runtime()
 
-add_custom_command(TARGET d3d12helper_tests POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/../shaders"
-        "$<TARGET_FILE_DIR:d3d12helper_tests>/shaders"
-)
+    set(D3D12HELPER_TEST_RUNTIME_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
+
+    set(D3D12HELPER_TEST_RUNTIME_COMMANDS
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "${D3D12HELPER_TEST_RUNTIME_DIR}/shaders"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/../shaders"
+            "${D3D12HELPER_TEST_RUNTIME_DIR}/shaders"
+    )
+
+    if(D3D12HELPER_COPY_DXC_RUNTIME AND D3D12HELPER_DXCOMPILER_DLL)
+        list(APPEND D3D12HELPER_TEST_RUNTIME_COMMANDS
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${D3D12HELPER_DXCOMPILER_DLL}"
+                "${D3D12HELPER_TEST_RUNTIME_DIR}"
+        )
+    endif()
+
+    if(D3D12HELPER_COPY_DXC_RUNTIME AND D3D12HELPER_DXIL_DLL)
+        list(APPEND D3D12HELPER_TEST_RUNTIME_COMMANDS
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${D3D12HELPER_DXIL_DLL}"
+                "${D3D12HELPER_TEST_RUNTIME_DIR}"
+        )
+    endif()
+
+    add_custom_target(${D3D12HELPER_TEST_RUNTIME_TARGET} ALL
+        ${D3D12HELPER_TEST_RUNTIME_COMMANDS}
+        VERBATIM
+    )
+endif()
+
+add_dependencies(d3d12helper_tests ${D3D12HELPER_TEST_RUNTIME_TARGET})
 
 set(D3D12HELPER_TEST_SUITES
     FormatUtil
@@ -93,6 +125,7 @@ set(D3D12HELPER_TEST_SUITES
     ComputePipeline
     GraphicsPipeline
     Processing
+    ProcessingBlur
 )
 
 foreach(suite IN LISTS D3D12HELPER_TEST_SUITES)
