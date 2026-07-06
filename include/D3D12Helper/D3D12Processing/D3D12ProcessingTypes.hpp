@@ -133,6 +133,11 @@ enum class HeatmapMode : UINT {
     TurboApprox = 3,
 };
 
+enum class PyramidEdgeMode : UINT {
+    Clamp = 0,
+    Constant = 1,
+};
+
 struct ProcessingColorDesc {
     ProcessingColorMatrix srcMatrix = ProcessingColorMatrix::BT709;
     ProcessingColorRange  srcRange  = ProcessingColorRange::Full;
@@ -351,6 +356,25 @@ struct MaskOverlayDesc {
     bool invert = false;
     float overlayColor[4] = { 1.0f, 0.0f, 0.0f, 0.5f };
     float opacity = 1.0f;
+};
+
+
+struct PyramidDownsampleDesc {
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+
+    // Used only when the 2x2 source footprint crosses srcRect boundaries.
+    PyramidEdgeMode edgeMode = PyramidEdgeMode::Clamp;
+    float borderColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+};
+
+struct PyramidUpsampleDesc {
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+
+    ProcessingFilter filter = ProcessingFilter::Linear;
+    PyramidEdgeMode edgeMode = PyramidEdgeMode::Clamp;
+    float borderColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 };
 
 struct D3D12ProcessingStateDesc {

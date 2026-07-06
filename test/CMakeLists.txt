@@ -132,6 +132,7 @@ set(D3D12HELPER_TEST_SUITES
     ProcessingKernelFilter
     ProcessingMask
     ProcessingThreshold
+    ProcessingPyramid
 )
 
 foreach(suite IN LISTS D3D12HELPER_TEST_SUITES)
