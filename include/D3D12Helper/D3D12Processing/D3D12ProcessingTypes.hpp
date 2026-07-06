@@ -103,6 +103,29 @@ enum class KernelEdgeMode : UINT {
     Constant = 1,
 };
 
+enum class MaskChannel : UINT {
+    Red = 0,
+    Green = 1,
+    Blue = 2,
+    Alpha = 3,
+    Luma = 4,
+};
+
+enum class MaskApplyMode : UINT {
+    ApplyAlpha = 0,
+    MultiplyRgb = 1,
+    MultiplyRgba = 2,
+    ReplaceAlpha = 3,
+};
+
+enum class MaskCombineMode : UINT {
+    Add = 0,
+    Multiply = 1,
+    Max = 2,
+    Min = 3,
+    Subtract = 4,
+};
+
 struct ProcessingColorDesc {
     ProcessingColorMatrix srcMatrix = ProcessingColorMatrix::BT709;
     ProcessingColorRange  srcRange  = ProcessingColorRange::Full;
@@ -235,6 +258,45 @@ struct KernelFilterDesc {
     float borderColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 };
 
+struct MaskApplyDesc {
+    ProcessingRect srcRect = {};
+    ProcessingRect maskRect = {};
+    ProcessingRect dstRect = {};
+    MaskApplyMode mode = MaskApplyMode::ApplyAlpha;
+    MaskChannel channel = MaskChannel::Alpha;
+    bool invert = false;
+    float strength = 1.0f;
+};
+
+struct MaskBlendDesc {
+    ProcessingRect baseRect = {};
+    ProcessingRect overlayRect = {};
+    ProcessingRect maskRect = {};
+    ProcessingRect dstRect = {};
+    MaskChannel channel = MaskChannel::Alpha;
+    bool invert = false;
+    float opacity = 1.0f;
+};
+
+struct MaskCombineDesc {
+    ProcessingRect maskARect = {};
+    ProcessingRect maskBRect = {};
+    ProcessingRect dstRect = {};
+    MaskCombineMode mode = MaskCombineMode::Max;
+    MaskChannel channelA = MaskChannel::Alpha;
+    MaskChannel channelB = MaskChannel::Alpha;
+    bool invertA = false;
+    bool invertB = false;
+    float scale = 1.0f;
+    float bias = 0.0f;
+};
+
+struct MaskInvertDesc {
+    ProcessingRect maskRect = {};
+    ProcessingRect dstRect = {};
+    MaskChannel channel = MaskChannel::Alpha;
+};
+
 struct D3D12ProcessingStateDesc {
     D3D12_RESOURCE_STATES srcBefore = D3D12_RESOURCE_STATE_COMMON;
     D3D12_RESOURCE_STATES srcAfter  = D3D12_RESOURCE_STATE_COMMON;
@@ -248,6 +310,18 @@ struct D3D12ProcessingTwoInputStateDesc {
     D3D12_RESOURCE_STATES src0After  = D3D12_RESOURCE_STATE_COMMON;
     D3D12_RESOURCE_STATES src1Before = D3D12_RESOURCE_STATE_COMMON;
     D3D12_RESOURCE_STATES src1After  = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES dstBefore  = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES dstAfter   = D3D12_RESOURCE_STATE_COMMON;
+    bool useExplicitStates = false;
+};
+
+struct D3D12ProcessingThreeInputStateDesc {
+    D3D12_RESOURCE_STATES src0Before = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES src0After  = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES src1Before = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES src1After  = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES src2Before = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES src2After  = D3D12_RESOURCE_STATE_COMMON;
     D3D12_RESOURCE_STATES dstBefore  = D3D12_RESOURCE_STATE_COMMON;
     D3D12_RESOURCE_STATES dstAfter   = D3D12_RESOURCE_STATE_COMMON;
     bool useExplicitStates = false;

@@ -15,4 +15,5 @@
 #include <D3D12Helper/D3D12Processing/D3D12RegionBlur.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12ColorAdjust.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12KernelFilter.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12MaskProcessor.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12FusedPipeline.hpp>
