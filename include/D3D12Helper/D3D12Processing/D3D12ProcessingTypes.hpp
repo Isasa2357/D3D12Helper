@@ -377,6 +377,57 @@ struct PyramidUpsampleDesc {
     float borderColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 };
 
+struct PyramidBlurDesc {
+    DXGI_FORMAT srcFormat = DXGI_FORMAT_UNKNOWN;
+    DXGI_FORMAT dstFormat = DXGI_FORMAT_UNKNOWN;
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+
+    UINT levels = 1;
+
+    BlurMode blurMode = BlurMode::Gaussian;
+    UINT blurRadius = 5;
+    float blurSigma = 2.0f;
+    BlurEdgeMode blurEdgeMode = BlurEdgeMode::Clamp;
+    float blurBorderColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+    ProcessingFilter upsampleFilter = ProcessingFilter::Linear;
+    PyramidEdgeMode pyramidEdgeMode = PyramidEdgeMode::Clamp;
+    float pyramidBorderColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+};
+
+struct PyramidRegionBlurDesc {
+    DXGI_FORMAT srcFormat = DXGI_FORMAT_UNKNOWN;
+    DXGI_FORMAT dstFormat = DXGI_FORMAT_UNKNOWN;
+    ProcessingRect srcRect = {};
+    ProcessingRect dstRect = {};
+
+    RegionShape shape = RegionShape::Circle;
+    RegionSelection selection = RegionSelection::Outside;
+
+    float centerX = 0.0f;
+    float centerY = 0.0f;
+    float radius = 1.0f;
+    float rectX = 0.0f;
+    float rectY = 0.0f;
+    float rectWidth = 1.0f;
+    float rectHeight = 1.0f;
+    float edgeSoftness = 0.0f;
+    float blurStrength = 1.0f;
+
+    UINT levels = 1;
+
+    BlurMode blurMode = BlurMode::Gaussian;
+    UINT blurRadius = 5;
+    float blurSigma = 2.0f;
+    BlurEdgeMode blurEdgeMode = BlurEdgeMode::Clamp;
+    float blurBorderColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+    ProcessingFilter upsampleFilter = ProcessingFilter::Linear;
+    PyramidEdgeMode pyramidEdgeMode = PyramidEdgeMode::Clamp;
+    float pyramidBorderColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+};
+
 struct D3D12ProcessingStateDesc {
     D3D12_RESOURCE_STATES srcBefore = D3D12_RESOURCE_STATE_COMMON;
     D3D12_RESOURCE_STATES srcAfter  = D3D12_RESOURCE_STATE_COMMON;

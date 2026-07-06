@@ -18,4 +18,6 @@
 #include <D3D12Helper/D3D12Processing/D3D12MaskProcessor.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12ThresholdProcessor.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12PyramidProcessor.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12PyramidBlur.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12PyramidRegionBlur.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12FusedPipeline.hpp>
