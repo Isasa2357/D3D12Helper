@@ -2,6 +2,19 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.9.0 - Packaging
+
+### Summary
+
+v1.9.0 adds install/export package support for CMake consumers.
+
+### Added
+
+- Install rules for library, headers, and shader assets.
+- CMake package config files.
+- Exported `D3D12Helper::D3D12Helper` package target.
+- Packaging documentation.
+
 ## v1.8.1 - Test hardening
 
 ### Summary
