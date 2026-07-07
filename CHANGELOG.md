@@ -2,6 +2,19 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.6.0 - Copy / Resolve / Mipmap
+
+### Summary
+
+v1.6.0 adds copy, resolve, and mipmap utility helpers.
+
+### Added
+
+- D3D12Copy helpers.
+- D3D12Resolve helpers.
+- D3D12Mipmap helpers.
+- Copy / Resolve / Mipmap tests.
+
 ## v1.5.0 - Diagnostics
 
 ### Summary
