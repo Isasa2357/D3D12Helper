@@ -144,6 +144,7 @@ set(D3D12HELPER_TEST_SUITES
     ProcessingThreshold
     ProcessingPyramid
     ProcessingPyramidBlur
+    ProcessingPyramidRegionBlur
 )
 
 foreach(suite IN LISTS D3D12HELPER_TEST_SUITES)
