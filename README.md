@@ -2,6 +2,8 @@
 
 Direct3D 12 の定型処理を薄くラップした **Layer 1 / Layer 2 / Layer 3 構成の C++17 ヘルパライブラリ**です。
 
+**現在の安定版は v1.0.0 です。** v1.0.0 は、既存の Core / Framework / Processing / sample / test を安定版として固定するリリースです。v1.1.0 以降で、D3D11Helper と同じ Foundation / Core / Gpu / Presentation / Processing / Interop / Diagnostics 体系への再整理を進めます。
+
 デバイス生成、DXGI アダプタ選択、Queue / Fence / CommandList 管理、リソース作成、Descriptor 管理、Upload / Readback、Compute / Graphics パイプライン、シェーダコンパイル、SwapChain 作成、共有リソース作成、GPU 画像処理など、D3D12 アプリケーションで繰り返し書くコードを軽量クラスと自由関数にまとめています。
 
 > 姉妹プロジェクト [D3D11Helper](https://github.com/Isasa2357/D3D11Helper) と近い設計思想で、D3D11 / D3D12 間の移植時に認知コストが小さくなるようにしています。
@@ -338,7 +340,7 @@ target_link_libraries(MyApp PRIVATE D3D12Helper::D3D12Helper)
 | `D3D12DescriptorHeap` | View オブジェクト | D3D12 では Descriptor Heap を明示管理 |
 | `D3D12UploadBuffer` / `D3D12UploadRing` | `UpdateSubresource` / Map | D3D12 では転送用リソースを明示管理 |
 | `D3D12ReadbackBuffer` | Staging Buffer | GPU→CPU の読み戻し |
-| `D3D12Processing` | `D3D11Processing` | v0.2.0 時点で主要 Processing API を概ね対応 |
+| `D3D12Processing` | `D3D11Processing` | v1.0.0 時点で主要 Processing API を概ね対応 |
 
 ---
 
@@ -352,6 +354,7 @@ target_link_libraries(MyApp PRIVATE D3D12Helper::D3D12Helper)
 | [`doc/D3D12Processing.md`](doc/D3D12Processing.md) | Layer 3 Processing API リファレンス |
 | [`doc/D3D12ProcessingFutureWork.md`](doc/D3D12ProcessingFutureWork.md) | Processing Layer の future work |
 | [`doc/ReleaseChecklist_v0.2.0.md`](doc/ReleaseChecklist_v0.2.0.md) | v0.2.0 release checklist |
+| [`doc/ReleaseNotes_v1.0.0.md`](doc/ReleaseNotes_v1.0.0.md) | v1.0.0 release notes |
 | [`doc/Patterns.md`](doc/Patterns.md) | よくある処理パターン |
 | [`sample/README.md`](sample/README.md) | サンプル一覧と実行方法 |
 | [`test/README.md`](test/README.md) | テスト構成と実行方法 |
