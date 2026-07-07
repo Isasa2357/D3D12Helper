@@ -116,13 +116,17 @@ int main() {
         constexpr UINT height = 4;
         auto expected = MakeD3D12Image(width, height);
 
+        const auto sharedFlags = static_cast<D3D12_RESOURCE_FLAGS>(
+            D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET |
+            D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS);
+
         auto shared = D3D12CoreLib::CreateSharedTexture2DResource(
             *d3d12,
             width,
             height,
             DXGI_FORMAT_R8G8B8A8_UNORM,
             D3D12_RESOURCE_STATE_COMMON,
-            D3D12_RESOURCE_FLAG_NONE);
+            sharedFlags);
 
         D3D12CoreLib::UpdateTexture2DFromCpuImage(
             *d3d12,
