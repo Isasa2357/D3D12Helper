@@ -2,6 +2,8 @@
 
 Direct3D 12 の定型処理を薄くラップした **Layer 1 / Layer 2 / Layer 3 構成の C++17 ヘルパライブラリ**です。
 
+**現在の安定版は v1.0.0 です。** v1.0.0 は、既存の Core / Framework / Processing / test / sample を安定版として固定するリリースです。以降の v1.1.0 では、D3D11Helper と同じ Foundation / Core / Gpu / Presentation / Processing / Interop / Diagnostics 体系への再整理を進めます。
+
 デバイス生成、DXGI アダプタ選択、Queue / Fence / CommandList 管理、リソース作成、Descriptor 管理、Upload / Readback、Compute / Graphics パイプライン、シェーダコンパイル、SwapChain 作成、共有リソース作成、GPU 画像処理など、D3D12 アプリケーションで繰り返し書くコードを軽量クラスと自由関数にまとめています。
 
 > 姉妹プロジェクト [D3D11Helper](https://github.com/Isasa2357/D3D11Helper) と近い設計思想で、D3D11 / D3D12 間の移植時に認知コストが小さくなるようにしています。
@@ -219,148 +221,79 @@ ctx.Close();
 
 ### DXC ランタイムの準備
 
-NuGet から取得する場合は、リポジトリ直下で次を実行します。
+DXC を使うサンプルやテストでは `dxcompiler.dll` と `dxil.dll` が実行ファイルと同じディレクトリ、または `PATH` 上に必要です。
+
+Visual Studio / Windows SDK に含まれる DXC を使う場合は、CMake が代表的なインストール先を探索し、見つかった DLL をテストやサンプルの実行ディレクトリへコピーします。
+
+### CMake
 
 ```bat
-nuget install Microsoft.Direct3D.DXC -Version 1.9.2602.24 -OutputDirectory packages
-```
-
-CMake は `packages/` やユーザーの NuGet キャッシュから `dxcompiler.dll` / `dxil.dll` を探し、サンプル・テストの exe 横へコピーします。
-
-### CMake ビルド
-
-```bat
-cmake -S . -B out/build/default -G "Visual Studio 17 2022" -A x64 ^
-  -DD3D12HELPER_BUILD_SAMPLES=ON ^
-  -DD3D12HELPER_BUILD_TESTS=ON
-
+cmake -S . -B out/build/default -G "Visual Studio 17 2022" -A x64
 cmake --build out/build/default --config Debug
-```
-
-### テスト
-
-```bat
 ctest --test-dir out/build/default -C Debug --output-on-failure
 ```
 
-特定の suite だけ実行する場合：
+### オプション
 
 ```bat
-ctest --test-dir out/build/default -C Debug -R Processing --output-on-failure
+cmake -S . -B out/build/default ^
+  -DD3D12HELPER_BUILD_SAMPLES=ON ^
+  -DD3D12HELPER_BUILD_TESTS=ON
 ```
 
 ---
 
 ## サンプル
 
-| 名前 | 概要 | ウィンドウ |
-| --- | --- | --- |
-| `01_HelloDevice` | D3D12Core を初期化し、アダプタ情報・キュー情報を表示 | 不要 |
-| `02_ComputeGrayscale` | GPU で画像をグレースケール変換し、CPU readback で検証 | 不要 |
-| `03_HelloTriangle` | Win32 ウィンドウに三角形を描画 | あり |
-| `04_ParallelCompute` | 複数スレッドで command を記録し、compute を並列実行 | 不要 |
-| `05_BufferCompute` | Structured / Buffer を使って SAXPY を GPU 計算 | 不要 |
-| `06_UploadRingStreaming` | UploadRing を使って毎フレーム CPU→GPU texture 更新 | 不要 |
-| `07_ProcessingFusedConvertResize` | NV12 → RGBA resize fused pass | 不要 |
-| `08_ProcessingP010Rgba16` | P010 / RGBA16F の Processing API 使用例 | 不要 |
-| `09_ProcessingBlur` | Blur pass | 不要 |
-| `10_ProcessingRegionEffect` | Region effect pass | 不要 |
-| `11_ProcessingRegionBlur` | Region blur pass | 不要 |
-| `12_ProcessingColorAdjust` | Color adjustment pass | 不要 |
-| `13_ProcessingKernelFilter` | 3x3 kernel filter pass | 不要 |
-| `14_ProcessingMask` | Mask application / blend / combine / invert | 不要 |
-| `15_ProcessingThreshold` | Threshold / heatmap / color map / overlay | 不要 |
-| `16_ProcessingPyramid` | Downsample2x / Upsample2x | 不要 |
-| `17_ProcessingPyramidBlur` | Pyramid blur / pyramid region blur | 不要 |
+`sample/` 以下に小さな確認用サンプルがあります。
 
-詳細は [`sample/README.md`](sample/README.md) を参照してください。
+| sample | 内容 |
+| --- | --- |
+| `01_HelloDevice` | Device / Queue 初期化と adapter 情報表示 |
+| `02_BufferUploadReadback` | Buffer upload / readback |
+| `03_TextureUploadReadback` | Texture2D upload / readback |
+| `04_ComputeBufferAdd` | Compute shader による buffer 加算 |
+| `05_WindowTriangle` | Window / SwapChain / GraphicsPipeline |
+| `06_SharedTexture` | 共有可能 Texture2D 作成 |
+| `07_ProcessingResize` | GPU resize |
+| `08_ProcessingNv12ToRgba` | NV12 → RGBA 変換 |
+| `09_ProcessingBlur` | blur |
+| `10_ProcessingRegionEffect` | region effect |
+| `11_ProcessingRegionBlur` | region blur |
+| `12_ProcessingColorAdjust` | color adjust |
+| `13_ProcessingKernelFilter` | 3x3 kernel filter |
+| `14_ProcessingMask` | mask processing |
+| `15_ProcessingThreshold` | threshold / heatmap / class color map |
+| `16_ProcessingPyramid` | downsample / upsample |
+| `17_ProcessingPyramidBlur` | pyramid blur / pyramid region blur |
 
 ---
 
 ## テスト
 
-`test/` には、外部テストフレームワークに依存しない軽量テストが入っています。1 つの実行ファイル `d3d12helper_tests.exe` にまとめ、CTest から suite 単位で実行します。
+CTest で以下の領域を確認します。
 
-Processing 系 suite：
+- FormatUtil / DxgiUtil / ThrowIfFailed
+- Core / Queue / Fence / CommandContext
+- Descriptor / Resource / Upload / Readback
+- ComputePipeline / GraphicsPipeline / ShaderCompiler
+- Processing 系各機能
 
-```text
-Processing
-ProcessingBlur
-ProcessingRegionEffect
-ProcessingRegionBlur
-ProcessingColorAdjust
-ProcessingKernelFilter
-ProcessingMask
-ProcessingThreshold
-ProcessingPyramid
-ProcessingPyramidBlur
+```bat
+ctest --test-dir out/build/default -C Debug --output-on-failure
 ```
 
 ---
 
-## 自分のプロジェクトへの組み込み
+## 設計メモ
 
-### CMake で組み込む場合
-
-```cmake
-add_subdirectory(path/to/D3D12Helper)
-target_link_libraries(MyApp PRIVATE D3D12Helper::D3D12Helper)
-```
-
-サンプルやテストが不要な場合は、追加前にオプションを OFF にします。
-
-```cmake
-set(D3D12HELPER_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
-set(D3D12HELPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-
-add_subdirectory(path/to/D3D12Helper)
-target_link_libraries(MyApp PRIVATE D3D12Helper::D3D12Helper)
-```
-
-### Visual Studio プロジェクトに直接追加する場合
-
-1. インクルードディレクトリに `include/` と `include/D3D12Helper/` を追加する。
-2. `src/*.cpp` をプロジェクトのコンパイル対象に追加する。
-3. Processing Layer を使う場合は `shaders/D3D12Processing/` を実行時に参照できる場所へ配置する。
-4. 必要に応じて `dxcompiler.dll` / `dxil.dll` を exe と同じディレクトリへ置く。
+- ライブラリ本体は DirectX / DXGI / DXC に閉じます。
+- PNG / JPEG / MP4 / NVENC / Media Foundation / OpenCV などの file/media I/O は含めません。
+- D3D12 の同期・Barrier・Descriptor は D3D11 より明示的なため、D3D11Helper と API 名を完全一致させるより、機能カテゴリを揃えることを優先します。
+- `D3D12Framework` は v1.x 互換 wrapper として維持し、今後の v1.1.0 以降で `D3D12Gpu` / `D3D12Presentation` / `D3D12Interop` / `D3D12Diagnostics` へ段階的に整理します。
 
 ---
 
-## D3D11Helper との対応
+## ライセンス
 
-| D3D12Helper | D3D11Helper 側の対応 | 備考 |
-| --- | --- | --- |
-| `D3D12Core` | `D3D11Core` | デバイス生成のファサード |
-| `D3D12Queue` | Immediate Context | D3D12 では Queue を明示管理 |
-| `D3D12CommandContext` | Immediate Context | Command Allocator + Command List |
-| `D3D12Fence` | `D3D11Fence` | D3D12 では通常の GPU 同期にも使用 |
-| `D3D12Barrier` | ほぼ不要 | D3D12 では Resource State 遷移を明示 |
-| `D3D12DescriptorHeap` | View オブジェクト | D3D12 では Descriptor Heap を明示管理 |
-| `D3D12UploadBuffer` / `D3D12UploadRing` | `UpdateSubresource` / Map | D3D12 では転送用リソースを明示管理 |
-| `D3D12ReadbackBuffer` | Staging Buffer | GPU→CPU の読み戻し |
-| `D3D12Processing` | `D3D11Processing` | v0.2.0 時点で主要 Processing API を概ね対応 |
-
----
-
-## ドキュメント
-
-| ファイル | 内容 |
-| --- | --- |
-| [`doc/README.md`](doc/README.md) | 全体像・設計思想・ファイル構成・組み込み方法 |
-| [`doc/D3D12Core.md`](doc/D3D12Core.md) | Layer 1 API リファレンス |
-| [`doc/D3D12Framework.md`](doc/D3D12Framework.md) | Layer 2 API リファレンス |
-| [`doc/D3D12Processing.md`](doc/D3D12Processing.md) | Layer 3 Processing API リファレンス |
-| [`doc/D3D12ProcessingFutureWork.md`](doc/D3D12ProcessingFutureWork.md) | Processing Layer の future work |
-| [`doc/ReleaseChecklist_v0.2.0.md`](doc/ReleaseChecklist_v0.2.0.md) | v0.2.0 release checklist |
-| [`doc/Patterns.md`](doc/Patterns.md) | よくある処理パターン |
-| [`sample/README.md`](sample/README.md) | サンプル一覧と実行方法 |
-| [`test/README.md`](test/README.md) | テスト構成と実行方法 |
-
----
-
-## 注意点
-
-- D3D12 の Resource State は基本的に明示管理です。`D3D12Resource` の状態追跡は簡易的なものであり、サブリソース単位の複雑な状態管理や複数キュー共有では、必要に応じて before / after を手動で指定してください。
-- DXC を使う処理では、実行時に `dxcompiler.dll` が必要です。CMake ビルドでは DLL コピー処理を用意していますが、直接プロジェクトへ組み込む場合は自分で配置してください。
-- Processing Layer を使う場合は、実行時に `shaders/D3D12Processing/` を参照できるようにしてください。
-- `sample/` と `test/` は利用例・検証用です。ライブラリとして使う場合は `include/`、`src/`、必要に応じて `shaders/` を組み込めば十分です。
+このリポジトリのライセンス設定に従います。
