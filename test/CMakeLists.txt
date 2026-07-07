@@ -183,3 +183,25 @@ if(D3D12HELPER_ENABLE_D3D11_INTEROP_TESTS)
         TIMEOUT 120
     )
 endif()
+
+if(D3D12HELPER_ENABLE_PACKAGE_SMOKE_TESTS)
+    if(NOT D3D12HELPER_INSTALL)
+        message(WARNING "D3D12 package smoke tests require D3D12HELPER_INSTALL=ON and will be skipped.")
+    else()
+        add_test(NAME PackageSmoke COMMAND
+            ${CMAKE_COMMAND}
+                -DD3D12HELPER_PACKAGE_SMOKE_ROOT_BUILD_DIR=${CMAKE_BINARY_DIR}
+                -DD3D12HELPER_PACKAGE_SMOKE_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/package_smoke
+                -DD3D12HELPER_PACKAGE_SMOKE_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/package_smoke_build/$<CONFIG>
+                -DD3D12HELPER_PACKAGE_SMOKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/package_smoke_install/$<CONFIG>
+                -DD3D12HELPER_PACKAGE_SMOKE_CONFIG=$<CONFIG>
+                -DD3D12HELPER_PACKAGE_SMOKE_GENERATOR=${CMAKE_GENERATOR}
+                -DD3D12HELPER_PACKAGE_SMOKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/PackageSmokeTest.cmake
+        )
+        set_tests_properties(PackageSmoke PROPERTIES
+            WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+            TIMEOUT 180
+        )
+    endif()
+endif()
