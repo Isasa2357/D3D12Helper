@@ -2,6 +2,23 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.11.0 - Advanced Processing hardening
+
+### Summary
+
+v1.11.0 hardens advanced processing coverage around pyramid region blur.
+
+### Added
+
+- Dedicated `ProcessingPyramidRegionBlur` CTest suite.
+- Shader compile coverage for pyramid region blur shaders.
+- Runtime coverage for circle/outside pyramid region blur.
+- Validation coverage for invalid circle radius.
+
+### Changed
+
+- Project version updated to 1.11.0.
+
 ## v1.10.1 - Shader Reflection hardening
 
 ### Summary
