@@ -2,8 +2,10 @@
 #include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
 
 #include <d3dcompiler.h>
+#include <dxcapi.h>
 
 #include <algorithm>
+#include <sstream>
 #include <stdexcept>
 
 namespace D3D12CoreLib {
@@ -22,22 +24,55 @@ UINT CountMaskComponents(BYTE mask) noexcept {
     return count;
 }
 
-ComPtr<ID3D12ShaderReflection> CreateReflection(const void* bytecode, size_t bytecodeSize) {
-    if (!bytecode || bytecodeSize == 0) {
-        throw std::runtime_error("ReflectShaderBytecode: empty shader bytecode");
-    }
-
+ComPtr<ID3D12ShaderReflection> TryCreateD3DReflectReflection(const void* bytecode, size_t bytecodeSize) {
     ComPtr<ID3D12ShaderReflection> reflection;
     const HRESULT hr = D3DReflect(
         bytecode,
         bytecodeSize,
         IID_PPV_ARGS(&reflection));
-    if (FAILED(hr) || !reflection) {
-        throw std::runtime_error(
-            "ReflectShaderBytecode: D3DReflect failed. "
-            "The current helper supports DXBC bytecode produced by D3DCompile.");
+    if (FAILED(hr)) {
+        return {};
     }
     return reflection;
+}
+
+ComPtr<ID3D12ShaderReflection> TryCreateDxcReflection(const void* bytecode, size_t bytecodeSize) {
+    ComPtr<IDxcUtils> utils;
+    HRESULT hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils));
+    if (FAILED(hr) || !utils) {
+        return {};
+    }
+
+    DxcBuffer buffer = {};
+    buffer.Ptr = bytecode;
+    buffer.Size = bytecodeSize;
+    buffer.Encoding = 0;
+
+    ComPtr<ID3D12ShaderReflection> reflection;
+    hr = utils->CreateReflection(&buffer, IID_PPV_ARGS(&reflection));
+    if (FAILED(hr)) {
+        return {};
+    }
+    return reflection;
+}
+
+ComPtr<ID3D12ShaderReflection> CreateReflection(const void* bytecode, size_t bytecodeSize) {
+    if (!bytecode || bytecodeSize == 0) {
+        throw std::runtime_error("ReflectShaderBytecode: empty shader bytecode");
+    }
+
+    if (auto reflection = TryCreateD3DReflectReflection(bytecode, bytecodeSize)) {
+        return reflection;
+    }
+
+    if (auto reflection = TryCreateDxcReflection(bytecode, bytecodeSize)) {
+        return reflection;
+    }
+
+    throw std::runtime_error(
+        "ReflectShaderBytecode: shader reflection failed. "
+        "The bytecode is neither D3DReflect-compatible DXBC nor DxcUtils-compatible DXIL/container bytecode, "
+        "or dxcompiler.dll is unavailable.");
 }
 
 ShaderSignatureParameterInfo ConvertSignatureParameter(const D3D12_SIGNATURE_PARAMETER_DESC& desc) {
