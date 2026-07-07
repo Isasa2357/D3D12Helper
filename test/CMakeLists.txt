@@ -124,6 +124,7 @@ set(D3D12HELPER_TEST_SUITES
     Transfer
     UploadRing
     ShaderCompiler
+    ShaderReflection
     ComputePipeline
     GraphicsPipeline
     Presentation
