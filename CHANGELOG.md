@@ -2,6 +2,21 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.4.0 - Binding
+
+### Summary
+
+v1.4.0 adds D3D12 binding helpers for descriptor heaps and root parameters.
+
+### Added
+
+- D3D12DescriptorHeapSet.
+- D3D12BindingSet.
+- Descriptor table binding helpers.
+- 32-bit root constant binding helpers.
+- Root CBV / SRV / UAV binding helpers.
+- Binding tests.
+
 ## v1.3.0 - Presentation
 
 ### Summary
