@@ -28,6 +28,7 @@ D3D12Diagnostics
 | [`D3D12Foundation.md`](D3D12Foundation.md) | DirectX/DXGI-only の基礎 utility |
 | [`D3D12Core.md`](D3D12Core.md) | Layer 1 / Core API リファレンス |
 | [`D3D12Gpu.md`](D3D12Gpu.md) | Resource / Descriptor / Upload / Readback / Pipeline / ShaderCompiler |
+| [`D3D12ShaderReflection.md`](D3D12ShaderReflection.md) | compiled shader reflection / input layout / resource binding / cbuffer inspection |
 | [`D3D12Framework.md`](D3D12Framework.md) | v1.x 互換 Framework API リファレンス |
 | [`D3D12Presentation.md`](D3D12Presentation.md) | SwapChain / presentation helper |
 | [`D3D12Processing.md`](D3D12Processing.md) | Processing API リファレンス |
@@ -42,6 +43,7 @@ D3D12Diagnostics
 | [`ReleaseNotes_v1.9.0.md`](ReleaseNotes_v1.9.0.md) | v1.9.0 release notes |
 | [`ReleaseNotes_v1.9.1.md`](ReleaseNotes_v1.9.1.md) | v1.9.1 release notes |
 | [`ReleaseNotes_v1.9.2.md`](ReleaseNotes_v1.9.2.md) | v1.9.2 release notes |
+| [`ReleaseNotes_v1.10.0.md`](ReleaseNotes_v1.10.0.md) | v1.10.0 release notes |
 | [`Patterns.md`](Patterns.md) | よくある処理パターン（レシピ集） |
 
 実際に動くコードは [`../sample`](../sample) を参照してください。
