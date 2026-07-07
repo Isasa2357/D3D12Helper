@@ -1,6 +1,9 @@
 #pragma once
 #include <D3D12Helper/D3D12Gpu/D3D12Binding.hpp>
+#include <D3D12Helper/D3D12Gpu/D3D12Copy.hpp>
 #include <D3D12Helper/D3D12Gpu/D3D12CpuImage.hpp>
+#include <D3D12Helper/D3D12Gpu/D3D12Mipmap.hpp>
+#include <D3D12Helper/D3D12Gpu/D3D12Resolve.hpp>
 #include <D3D12Helper/D3D12Gpu/D3D12TextureTransfer.hpp>
 #include <D3D12Helper/D3D12Framework/D3D12Resource.hpp>
 #include <D3D12Helper/D3D12Framework/D3D12DescriptorHandle.hpp>

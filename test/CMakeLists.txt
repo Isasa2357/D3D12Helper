@@ -129,6 +129,7 @@ set(D3D12HELPER_TEST_SUITES
     Presentation
     Binding
     Diagnostics
+    CopyResolveMipmap
     Processing
     ProcessingBlur
     ProcessingRegionEffect
