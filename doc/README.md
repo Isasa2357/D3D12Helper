@@ -40,6 +40,7 @@ D3D12Diagnostics
 | [`ReleaseNotes_v1.1.0.md`](ReleaseNotes_v1.1.0.md) | v1.1.0 release notes |
 | [`ReleaseNotes_v1.8.1.md`](ReleaseNotes_v1.8.1.md) | v1.8.1 release notes |
 | [`ReleaseNotes_v1.9.0.md`](ReleaseNotes_v1.9.0.md) | v1.9.0 release notes |
+| [`ReleaseNotes_v1.9.1.md`](ReleaseNotes_v1.9.1.md) | v1.9.1 release notes |
 | [`Patterns.md`](Patterns.md) | よくある処理パターン（レシピ集） |
 
 実際に動くコードは [`../sample`](../sample) を参照してください。
