@@ -2,6 +2,20 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.5.0 - Diagnostics
+
+### Summary
+
+v1.5.0 adds diagnostics helpers.
+
+### Added
+
+- Device removed helpers.
+- InfoQueue wrapper.
+- GPU timer.
+- GPU profiler.
+- Diagnostics tests.
+
 ## v1.4.0 - Binding
 
 ### Summary
@@ -98,7 +112,3 @@ Future v1.1.0 work will reorganize the public module layout toward the same cate
 - Resource, descriptor, upload, readback, compute pipeline, graphics pipeline, shader compiler, and shared resource helpers.
 - D3D12Processing processors for conversion, resize, remap, composite, blur, region effect, region blur, color adjust, kernel filter, mask, threshold, pyramid, pyramid blur, and fused processing.
 - Existing samples and CTest suites.
-
-### Notes
-
-D3D12Framework remains the compatibility layer for v1.x users. It should not be removed during v1.1.0 module normalization.

@@ -128,6 +128,7 @@ set(D3D12HELPER_TEST_SUITES
     GraphicsPipeline
     Presentation
     Binding
+    Diagnostics
     Processing
     ProcessingBlur
     ProcessingRegionEffect
