@@ -151,3 +151,35 @@ foreach(suite IN LISTS D3D12HELPER_TEST_SUITES)
         WORKING_DIRECTORY "$<TARGET_FILE_DIR:d3d12helper_tests>"
     )
 endforeach()
+
+option(D3D12HELPER_ENABLE_D3D11_INTEROP_TESTS "Build optional D3D12/D3D11 interop E2E tests" OFF)
+set(D3D12HELPER_D3D11HELPER_GIT_REPOSITORY "https://github.com/Isasa2357/D3D11Helper.git" CACHE STRING "D3D11Helper git repository for optional interop tests")
+set(D3D12HELPER_D3D11HELPER_GIT_TAG "main" CACHE STRING "D3D11Helper git tag, branch, or commit for optional interop tests")
+
+if(D3D12HELPER_ENABLE_D3D11_INTEROP_TESTS)
+    include(FetchContent)
+
+    set(D3D11HELPER_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
+    set(D3D11HELPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(D3D11HELPER_ENABLE_D3D12_INTEROP_TESTS OFF CACHE BOOL "" FORCE)
+
+    FetchContent_Declare(
+        D3D11Helper
+        GIT_REPOSITORY "${D3D12HELPER_D3D11HELPER_GIT_REPOSITORY}"
+        GIT_TAG        "${D3D12HELPER_D3D11HELPER_GIT_TAG}"
+    )
+    FetchContent_MakeAvailable(D3D11Helper)
+
+    add_executable(test_interop_d3d11 D3D11InteropE2E.cpp)
+    target_include_directories(test_interop_d3d11 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+    target_link_libraries(test_interop_d3d11 PRIVATE D3D12Helper::D3D12Helper D3D11Helper::D3D11Helper)
+    if(MSVC)
+        target_compile_options(test_interop_d3d11 PRIVATE /utf-8 /EHsc)
+    endif()
+
+    add_test(NAME InteropD3D11 COMMAND test_interop_d3d11)
+    set_tests_properties(InteropD3D11 PROPERTIES
+        WORKING_DIRECTORY "$<TARGET_FILE_DIR:test_interop_d3d11>"
+        TIMEOUT 120
+    )
+endif()
