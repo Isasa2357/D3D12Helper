@@ -2,6 +2,19 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.8.0 - Interop
+
+### Summary
+
+v1.8.0 adds shared handle, shared resource, and shared fence wrappers.
+
+### Added
+
+- D3D12SharedHandle.
+- Shared resource helpers.
+- Shared fence helpers.
+- Interop tests.
+
 ## v1.7.0 - View / State
 
 ### Summary
