@@ -29,15 +29,13 @@ bool IsReadOnlyResourceState(D3D12_RESOURCE_STATES state) noexcept {
 
 bool CanImplicitlyPromoteTo(D3D12_RESOURCE_STATES state) noexcept {
     if (state == D3D12_RESOURCE_STATE_COMMON) return true;
-    if (IsWriteResourceState(state)) {
-        return state == D3D12_RESOURCE_STATE_COPY_DEST || state == D3D12_RESOURCE_STATE_RENDER_TARGET || state == D3D12_RESOURCE_STATE_DEPTH_WRITE;
-    }
-    return true;
+    if (state == D3D12_RESOURCE_STATE_COPY_SOURCE || state == D3D12_RESOURCE_STATE_COPY_DEST) return true;
+    return IsReadOnlyResourceState(state);
 }
 
 const char* ResourceStateName(D3D12_RESOURCE_STATES state) noexcept {
     switch (state) {
-    case D3D12_RESOURCE_STATE_COMMON: return "COMMON";
+    case D3D12_RESOURCE_STATE_COMMON: return "COMMON/PRESENT";
     case D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER: return "VERTEX_AND_CONSTANT_BUFFER";
     case D3D12_RESOURCE_STATE_INDEX_BUFFER: return "INDEX_BUFFER";
     case D3D12_RESOURCE_STATE_RENDER_TARGET: return "RENDER_TARGET";
@@ -52,7 +50,6 @@ const char* ResourceStateName(D3D12_RESOURCE_STATES state) noexcept {
     case D3D12_RESOURCE_STATE_COPY_SOURCE: return "COPY_SOURCE";
     case D3D12_RESOURCE_STATE_RESOLVE_DEST: return "RESOLVE_DEST";
     case D3D12_RESOURCE_STATE_RESOLVE_SOURCE: return "RESOLVE_SOURCE";
-    case D3D12_RESOURCE_STATE_PRESENT: return "PRESENT";
     default: return "COMBINED_OR_UNKNOWN";
     }
 }
