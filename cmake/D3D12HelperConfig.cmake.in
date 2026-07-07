@@ -1,5 +1,8 @@
 @PACKAGE_INIT@
 
+set(D3D12Helper_VERSION "@PROJECT_VERSION@")
+set(D3D12Helper_SHADER_DIR "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_DATADIR@/D3D12Helper/shaders")
+
 include("${CMAKE_CURRENT_LIST_DIR}/D3D12HelperTargets.cmake")
 
 check_required_components(D3D12Helper)
