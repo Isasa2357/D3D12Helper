@@ -2,6 +2,17 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.8.1 - Test hardening
+
+### Summary
+
+v1.8.1 hardens tests and documents coverage.
+
+### Added
+
+- Hardening tests.
+- Test coverage document.
+
 ## v1.8.0 - Interop
 
 ### Summary
