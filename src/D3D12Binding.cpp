@@ -135,7 +135,7 @@ void D3D12BindingSet::BindGraphics(ID3D12GraphicsCommandList* commandList) const
 
 void D3D12BindingSet::Bind(ID3D12GraphicsCommandList* commandList, bool compute) const {
     RequireCommandList(commandList, compute ? "D3D12BindingSet::BindCompute" : "D3D12BindingSet::BindGraphics");
-    SetDescriptorHeaps(commandList, m_heaps);
+    ::D3D12CoreLib::SetDescriptorHeaps(commandList, m_heaps);
     for (const auto& b : m_bindings) {
         switch (b.type) {
         case D3D12RootBindingType::DescriptorTable:
