@@ -2,6 +2,35 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.1.0 - Module layout normalization
+
+### Summary
+
+v1.1.0 adds the D3D11Helper-style public module layout without moving existing implementation files.
+
+The release introduces canonical umbrella headers for:
+
+- D3D12Foundation
+- D3D12Gpu
+- D3D12Presentation
+- D3D12Interop
+- D3D12Diagnostics
+
+D3D12Core and D3D12Processing remain canonical modules. D3D12Framework remains available as the v1.x compatibility wrapper.
+
+### Added
+
+- Added D3D12Foundation wrapper headers.
+- Added D3D12Gpu umbrella header.
+- Added D3D12Presentation umbrella header.
+- Added D3D12Interop umbrella header.
+- Added D3D12Diagnostics umbrella header.
+- Added module header smoke test suite.
+
+### Changed
+
+- Updated project version to 1.1.0.
+
 ## v1.0.0 - Stable baseline
 
 ### Summary
