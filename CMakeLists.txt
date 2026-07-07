@@ -12,10 +12,16 @@ project(D3D12Helper
     LANGUAGES CXX
 )
 
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(D3D12HELPER_INSTALL_DEFAULT ON)
+else()
+    set(D3D12HELPER_INSTALL_DEFAULT OFF)
+endif()
+
 option(D3D12HELPER_BUILD_SAMPLES   "Build D3D12Helper samples"            ON)
 option(D3D12HELPER_BUILD_TESTS     "Build D3D12Helper tests"              ON)
 option(D3D12HELPER_ENABLE_WARNINGS "Enable compiler warnings for library" ON)
-option(D3D12HELPER_INSTALL         "Enable D3D12Helper install rules"     ON)
+option(D3D12HELPER_INSTALL         "Enable D3D12Helper install rules"     ${D3D12HELPER_INSTALL_DEFAULT})
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
