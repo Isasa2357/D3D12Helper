@@ -50,6 +50,32 @@ cmake -S . -B out/build -G "Visual Studio 17 2022" -A x64 ^
   -DCMAKE_PREFIX_PATH=C:\Libraries\D3D12Helper
 ```
 
+## Package variables
+
+After `find_package(D3D12Helper CONFIG REQUIRED)`, these variables are available:
+
+- `D3D12Helper_VERSION`
+- `D3D12Helper_SHADER_DIR`
+
+`D3D12Helper_SHADER_DIR` points to the installed shader asset directory.
+
+## Package smoke test
+
+When D3D12Helper is configured as the top-level project, `D3D12HELPER_ENABLE_PACKAGE_SMOKE_TESTS` defaults to `ON`.
+
+The `PackageSmoke` CTest entry performs:
+
+1. `cmake --install` into a temporary prefix.
+2. Configure a minimal consumer project with `find_package(D3D12Helper CONFIG REQUIRED)`.
+3. Build that consumer project.
+
+Disable it explicitly with:
+
+```bat
+cmake -S . -B out/build -G "Visual Studio 17 2022" -A x64 ^
+  -DD3D12HELPER_ENABLE_PACKAGE_SMOKE_TESTS=OFF
+```
+
 ## Installed files
 
 - `include/D3D12Helper/...`
