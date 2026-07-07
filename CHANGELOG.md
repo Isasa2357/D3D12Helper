@@ -2,6 +2,20 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.9.2 - Shader asset namespace hardening
+
+### Summary
+
+v1.9.2 hardens runtime shader asset placement so D3D11Helper and D3D12Helper can be used by the same application without HLSL filename collisions.
+
+### Changed
+
+- Runtime sample/test shader copies now use `D3D12Helper/shaders/...` instead of a flat `shaders/...` root.
+- `D3D12ProcessingContext` now prefers `D3D12Helper/shaders/D3D12Processing` for default shader discovery.
+- The legacy `shaders/D3D12Processing` default path remains as a fallback for existing applications.
+- `D3D12HelperConfig.cmake` now exposes `D3D12Helper_PROCESSING_SHADER_DIR`.
+- Package smoke tests validate that installed shader variables are namespaced.
+
 ## v1.9.1 - Packaging hardening
 
 ### Summary

@@ -1,6 +1,7 @@
 #include <D3D12Helper/D3D12Processing/D3D12ProcessingContext.hpp>
 
 #include <stdexcept>
+#include <system_error>
 #include <utility>
 
 namespace D3D12CoreLib {
@@ -37,6 +38,23 @@ bool SupportsTextureLoad(ID3D12Device* device, DXGI_FORMAT format) {
            HasSupport1(support.Support1, D3D12_FORMAT_SUPPORT1_SHADER_LOAD);
 }
 
+bool DirectoryExists(const std::filesystem::path& path) noexcept {
+    std::error_code ec;
+    return std::filesystem::is_directory(path, ec);
+}
+
+std::filesystem::path SelectDefaultShaderDirectory() {
+    const auto cwd = std::filesystem::current_path();
+    const auto namespaced = cwd / "D3D12Helper" / "shaders" / "D3D12Processing";
+    if (DirectoryExists(namespaced)) {
+        return namespaced;
+    }
+
+    // Backward-compatible fallback for existing applications that already copy
+    // D3D12Helper shaders to a flat runtime "shaders" directory.
+    return cwd / "shaders" / "D3D12Processing";
+}
+
 } // namespace
 
 void D3D12ProcessingContext::Initialize(
@@ -57,7 +75,7 @@ void D3D12ProcessingContext::Initialize(
     m_samplerAllocator = samplerAllocator;
 
     if (shaderDirectory.empty()) {
-        shaderDirectory = std::filesystem::current_path() / "shaders" / "D3D12Processing";
+        shaderDirectory = SelectDefaultShaderDirectory();
     }
     m_shaderDirectory = std::move(shaderDirectory);
     m_caps = QueryCaps(core.GetDevice());

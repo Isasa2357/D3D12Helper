@@ -68,8 +68,10 @@ D3D12DescriptorAllocator sampler;
 sampler.Initialize(core->GetDevice(), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 16, true);
 
 D3D12ProcessingContext processing;
-processing.Initialize(*core, &cbvSrvUav, &sampler, "shaders/D3D12Processing");
+processing.Initialize(*core, &cbvSrvUav, &sampler, "D3D12Helper/shaders/D3D12Processing");
 ```
+
+`shaderDirectory` を省略した場合、`D3D12ProcessingContext` はまず `D3D12Helper/shaders/D3D12Processing` を探します。見つからない場合は、既存アプリとの互換性のために従来の `shaders/D3D12Processing` を fallback として参照します。
 
 `CBV/SRV/UAV` 用 descriptor heap は shader-visible である必要があります。Processing pass は内部で SRV/UAV descriptor table を作成し、compute shader から参照します。
 
@@ -134,7 +136,7 @@ processor.RecordSomething(ctx, src, dst, desc, states);
 | --- | --- |
 | in-place | 基本的に非対応。`src` と `dst` は別 resource にする |
 | output texture | UAV 書き込み対象なので `D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS` が必要 |
-| shader directory | 実行時に `shaders/D3D12Processing/` を参照可能にする |
+| shader directory | 実行時に `D3D12Helper/shaders/D3D12Processing/` を参照可能にする |
 | descriptor heap | shader-visible CBV/SRV/UAV heap が必要 |
 | format | 多くの pass は RGBA-like texture が対象 |
 | state | default では `D3D12Resource` の簡易 state tracking を使う |
@@ -640,7 +642,7 @@ blur.RecordPyramidRegionBlur(ctx, src, workspace, dst, desc);
 
 ## HLSL library 方針
 
-Processing Layer の HLSL は `shaders/D3D12Processing/` に配置します。単体 processor はそのまま使える `.hlsl` を提供し、共通処理は `.hlsli` として分離します。
+Processing Layer の HLSL は repository 内では `shaders/D3D12Processing/` に配置します。実行時 asset としては `D3D12Helper/shaders/D3D12Processing/` のように helper-specific root の下へ配置してください。単体 processor はそのまま使える `.hlsl` を提供し、共通処理は `.hlsli` として分離します。
 
 連続処理を 1 dispatch にまとめたい場合は、必要な `.hlsli` や関数を利用して、アプリケーション側で fused shader を作る方針です。ライブラリ側はまず安全で検証しやすい primitive pass を提供します。
 
