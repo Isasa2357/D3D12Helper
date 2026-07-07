@@ -34,8 +34,10 @@ D3D12Diagnostics
 | [`D3D12Interop.md`](D3D12Interop.md) | shared resource / shared fence interop |
 | [`D3D12Diagnostics.md`](D3D12Diagnostics.md) | debug layer / InfoQueue / DRED / object naming |
 | [`D3D12ProcessingFutureWork.md`](D3D12ProcessingFutureWork.md) | Processing Layer の future work |
+| [`TestCoverage.md`](TestCoverage.md) | CTest suite coverage |
 | [`ReleaseNotes_v1.0.0.md`](ReleaseNotes_v1.0.0.md) | v1.0.0 release notes |
 | [`ReleaseNotes_v1.1.0.md`](ReleaseNotes_v1.1.0.md) | v1.1.0 release notes |
+| [`ReleaseNotes_v1.8.1.md`](ReleaseNotes_v1.8.1.md) | v1.8.1 release notes |
 | [`Patterns.md`](Patterns.md) | よくある処理パターン（レシピ集） |
 
 実際に動くコードは [`../sample`](../sample) を参照してください。
@@ -158,32 +160,4 @@ CMake を使わず Visual Studio プロジェクトに直接追加する場合�
 ```cpp
 #include <D3D12Helper/D3D12Core/D3D12Core.hpp>
 #include <D3D12Helper/D3D12Gpu/D3D12Gpu.hpp>
-#include <iostream>
-
-using namespace D3D12CoreLib;
-
-int main() {
-    try {
-        D3D12CoreConfig config;
-        config.allowWarpAdapter = true;
-        auto core = D3D12Core::CreateShared(config);
-
-        std::wcout << L"Adapter: "
-                   << core->DeviceContext().GetAdapterName() << L"\n";
-
-        D3D12Resource buffer = CreateBuffer(
-            *core,
-            1024,
-            D3D12_HEAP_TYPE_DEFAULT,
-            D3D12_RESOURCE_STATE_COMMON);
-
-        core->WaitIdle();
-    } catch (const std::exception& e) {
-        std::cerr << "D3D12 init failed: " << e.what() << "\n";
-        return 1;
-    }
-    return 0;
-}
 ```
-
-GPU で Compute を回して結果を CPU に戻す例は [`../sample/02_ComputeGrayscale`](../sample/02_ComputeGrayscale) と [`Patterns.md`](Patterns.md) を参照してください。Processing Layer の例は [`D3D12Processing.md`](D3D12Processing.md) と [`../sample`](../sample) を参照してください。
