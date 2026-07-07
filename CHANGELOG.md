@@ -2,6 +2,18 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.3.0 - Presentation
+
+### Summary
+
+v1.3.0 adds presentation-layer wrappers.
+
+### Added
+
+- D3D12RenderTarget.
+- D3D12SwapChain.
+- Presentation tests.
+
 ## v1.2.0 - Transfer
 
 ### Summary
