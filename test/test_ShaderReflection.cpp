@@ -49,7 +49,7 @@ void main(uint3 id : SV_DispatchThreadID) {
 } // namespace
 
 TEST(ShaderReflection, ReflectsResourceBindingsAndConstantBuffers) {
-    ShaderBytecode bytecode = CompileShaderFromSource_D3DCompile(kVertexShader, "main", "vs_5_0");
+    ShaderBytecode bytecode = CompileShaderFromSource_D3DCompile(kVertexShader, "main", "vs_5_1");
     ShaderReflectionInfo reflection = ReflectShaderBytecode(bytecode);
 
     CHECK(reflection.boundResourceCount >= 3);
@@ -75,7 +75,7 @@ TEST(ShaderReflection, ReflectsResourceBindingsAndConstantBuffers) {
 }
 
 TEST(ShaderReflection, BuildsInputLayoutElements) {
-    ShaderBytecode bytecode = CompileShaderFromSource_D3DCompile(kVertexShader, "main", "vs_5_0");
+    ShaderBytecode bytecode = CompileShaderFromSource_D3DCompile(kVertexShader, "main", "vs_5_1");
     ShaderReflectionInfo reflection = ReflectShaderBytecode(bytecode);
 
     auto elements = MakeInputLayoutElementsFromReflection(reflection);
