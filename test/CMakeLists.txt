@@ -132,6 +132,7 @@ set(D3D12HELPER_TEST_SUITES
     CopyResolveMipmap
     ViewState
     Interop
+    Hardening
     Processing
     ProcessingBlur
     ProcessingRegionEffect
