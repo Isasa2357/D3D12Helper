@@ -13,11 +13,7 @@ const char* kVertexShader = R"(
 cbuffer CameraConstants : register(b0)
 {
     float4x4 viewProj;
-    float4 tint;
 };
-
-Texture2D gTexture : register(t3, space2);
-SamplerState gSampler : register(s1);
 
 struct VSIn {
     float3 position : POSITION;
@@ -38,6 +34,21 @@ VSOut main(VSIn input) {
 }
 )";
 
+const char* kPixelShader = R"(
+cbuffer MaterialConstants : register(b0)
+{
+    float4 tint;
+    float gain;
+};
+
+Texture2D gTexture : register(t3, space2);
+SamplerState gSampler : register(s1);
+
+float4 main(float2 texcoord : TEXCOORD0) : SV_Target {
+    return gTexture.Sample(gSampler, texcoord) * tint * gain;
+}
+)";
+
 const char* kComputeShader = R"(
 RWStructuredBuffer<uint> gOut : register(u0);
 [numthreads(8,4,2)]
@@ -49,18 +60,18 @@ void main(uint3 id : SV_DispatchThreadID) {
 } // namespace
 
 TEST(ShaderReflection, ReflectsResourceBindingsAndConstantBuffers) {
-    ShaderBytecode bytecode = CompileShaderFromSource_D3DCompile(kVertexShader, "main", "vs_5_1");
+    ShaderBytecode bytecode = CompileShaderFromSource_D3DCompile(kPixelShader, "main", "ps_5_1");
     ShaderReflectionInfo reflection = ReflectShaderBytecode(bytecode);
 
     CHECK(reflection.boundResourceCount >= 3);
-    CHECK(reflection.inputParameterCount == 3);
+    CHECK(reflection.inputParameterCount == 1);
     CHECK(reflection.outputParameterCount >= 1);
 
-    const auto* cb = FindConstantBuffer(reflection, "CameraConstants");
+    const auto* cb = FindConstantBuffer(reflection, "MaterialConstants");
     CHECK(cb != nullptr);
-    CHECK(cb->sizeBytes >= 80);
-    CHECK(FindConstantBufferVariable(*cb, "viewProj") != nullptr);
+    CHECK(cb->sizeBytes >= 20);
     CHECK(FindConstantBufferVariable(*cb, "tint") != nullptr);
+    CHECK(FindConstantBufferVariable(*cb, "gain") != nullptr);
 
     const auto* texture = FindResourceBinding(reflection, "gTexture");
     CHECK(texture != nullptr);
@@ -75,7 +86,7 @@ TEST(ShaderReflection, ReflectsResourceBindingsAndConstantBuffers) {
 }
 
 TEST(ShaderReflection, BuildsInputLayoutElements) {
-    ShaderBytecode bytecode = CompileShaderFromSource_D3DCompile(kVertexShader, "main", "vs_5_1");
+    ShaderBytecode bytecode = CompileShaderFromSource_D3DCompile(kVertexShader, "main", "vs_5_0");
     ShaderReflectionInfo reflection = ReflectShaderBytecode(bytecode);
 
     auto elements = MakeInputLayoutElementsFromReflection(reflection);
