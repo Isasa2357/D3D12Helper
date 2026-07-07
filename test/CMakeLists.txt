@@ -126,6 +126,7 @@ set(D3D12HELPER_TEST_SUITES
     ShaderCompiler
     ComputePipeline
     GraphicsPipeline
+    Presentation
     Processing
     ProcessingBlur
     ProcessingRegionEffect
