@@ -5,6 +5,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace D3D12CoreLib {
 namespace {
