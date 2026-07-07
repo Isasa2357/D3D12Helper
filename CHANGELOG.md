@@ -2,6 +2,23 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.10.0 - Shader Reflection
+
+### Summary
+
+v1.10.0 adds lightweight shader reflection helpers for compiled shader bytecode.
+
+### Added
+
+- `D3D12ShaderReflection.hpp`.
+- `ReflectShaderBytecode` for DXBC shader bytecode.
+- Resource binding inspection.
+- Constant buffer and variable inspection.
+- Input/output signature parameter inspection.
+- Input layout element generation from vertex shader signatures.
+- Compute shader thread group size inspection.
+- Shader reflection tests.
+
 ## v1.9.2 - Shader asset namespace hardening
 
 ### Summary
