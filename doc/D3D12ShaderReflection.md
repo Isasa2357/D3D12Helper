@@ -27,6 +27,17 @@ ShaderBytecode bytecode = CompileShaderFromSource_D3DCompile(
 ShaderReflectionInfo reflection = ReflectShaderBytecode(bytecode);
 ```
 
+The same API also accepts DXIL/container bytecode produced by DXC when `dxcompiler.dll` is available at runtime.
+
+```cpp
+ShaderBytecode bytecode = CompileShaderFromSource_Dxc(
+    hlslSource,
+    "main",
+    "cs_6_0");
+
+ShaderReflectionInfo reflection = ReflectShaderBytecode(bytecode);
+```
+
 ## Resource binding inspection
 
 ```cpp
@@ -96,4 +107,4 @@ UINT z = reflection.threadGroupSizeZ;
 
 ## Scope
 
-The initial implementation focuses on bytecode produced by `D3DCompile` / DXBC. DXIL/DXC container reflection is a future hardening item.
+Reflection first tries `D3DReflect` for DXBC bytecode, then falls back to `IDxcUtils::CreateReflection` for DXIL/container bytecode. DXIL reflection requires `dxcompiler.dll` to be available at runtime.
