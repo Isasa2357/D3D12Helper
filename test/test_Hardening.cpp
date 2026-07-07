@@ -45,7 +45,8 @@ TEST(Hardening, StateTransitionEdges) {
     D3D12StateTransition bad{ nullptr, D3D12_RESOURCE_STATE_COPY_SOURCE };
     CHECK_THROWS(RecordTransitions(ctx, &bad, 1));
 
-    CHECK_THROWS(MakeTrackedTransitionBarrier(bad.resource ? *bad.resource : *static_cast<D3D12Resource*>(nullptr), D3D12_RESOURCE_STATE_COPY_SOURCE));
+    D3D12Resource empty;
+    CHECK_THROWS(MakeTrackedTransitionBarrier(empty, D3D12_RESOURCE_STATE_COPY_SOURCE));
 
     ctx.Close();
 }
