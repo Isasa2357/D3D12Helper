@@ -1,5 +1,5 @@
 # D3D12Diagnostics
 
-D3D12Diagnostics is the canonical module for debug-layer, InfoQueue, DRED, and object naming helpers.
+Diagnostics module for debug layer, InfoQueue, device removed checks, GPU timer, and GPU profiler.
 
-v1.1.0 adds the umbrella include for the existing debug helper APIs.
+v1.5.0 adds device diagnostics, InfoQueue wrapper, GPU timer, and GPU profiler.
