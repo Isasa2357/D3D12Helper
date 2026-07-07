@@ -2,6 +2,18 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.7.0 - View / State
+
+### Summary
+
+v1.7.0 adds view descriptor and resource state helpers.
+
+### Added
+
+- D3D12View helpers.
+- D3D12State helpers.
+- View / State tests.
+
 ## v1.6.0 - Copy / Resolve / Mipmap
 
 ### Summary

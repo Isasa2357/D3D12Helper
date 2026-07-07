@@ -1,6 +1,11 @@
 # D3D12Gpu
 
-D3D12Gpu is the canonical module for resource, descriptor, upload, readback, transfer, binding, copy, resolve, mipmap, pipeline, shader compiler, and helper APIs.
+D3D12Gpu is the canonical module for resource, descriptor, upload, readback, transfer, binding, copy, resolve, mipmap, view, state, pipeline, shader compiler, and helper APIs.
+
+## Added in v1.7.0
+
+- D3D12View
+- D3D12State
 
 ## Added in v1.6.0
 
