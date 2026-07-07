@@ -2,6 +2,18 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.2.0 - Transfer
+
+### Summary
+
+v1.2.0 adds CPU-side texture transfer helpers.
+
+### Added
+
+- D3D12CpuImage.
+- D3D12TextureTransfer.
+- Transfer tests.
+
 ## v1.1.0 - Module layout normalization
 
 ### Summary

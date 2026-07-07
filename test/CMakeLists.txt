@@ -121,6 +121,7 @@ set(D3D12HELPER_TEST_SUITES
     Resource
     Helpers
     UploadReadback
+    Transfer
     UploadRing
     ShaderCompiler
     ComputePipeline
