@@ -8,20 +8,23 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(D3D12Helper
-    VERSION 1.9.0
+    VERSION 1.9.1
     LANGUAGES CXX
 )
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     set(D3D12HELPER_INSTALL_DEFAULT ON)
+    set(D3D12HELPER_PACKAGE_SMOKE_DEFAULT ON)
 else()
     set(D3D12HELPER_INSTALL_DEFAULT OFF)
+    set(D3D12HELPER_PACKAGE_SMOKE_DEFAULT OFF)
 endif()
 
 option(D3D12HELPER_BUILD_SAMPLES   "Build D3D12Helper samples"            ON)
 option(D3D12HELPER_BUILD_TESTS     "Build D3D12Helper tests"              ON)
 option(D3D12HELPER_ENABLE_WARNINGS "Enable compiler warnings for library" ON)
 option(D3D12HELPER_INSTALL         "Enable D3D12Helper install rules"     ${D3D12HELPER_INSTALL_DEFAULT})
+option(D3D12HELPER_ENABLE_PACKAGE_SMOKE_TESTS "Enable install/find_package smoke tests" ${D3D12HELPER_PACKAGE_SMOKE_DEFAULT})
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
