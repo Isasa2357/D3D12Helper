@@ -34,10 +34,12 @@ D3D12Diagnostics
 | [`D3D12Interop.md`](D3D12Interop.md) | shared resource / shared fence interop |
 | [`D3D12Diagnostics.md`](D3D12Diagnostics.md) | debug layer / InfoQueue / DRED / object naming |
 | [`D3D12ProcessingFutureWork.md`](D3D12ProcessingFutureWork.md) | Processing Layer の future work |
+| [`Packaging.md`](Packaging.md) | install / FetchContent / find_package |
 | [`TestCoverage.md`](TestCoverage.md) | CTest suite coverage |
 | [`ReleaseNotes_v1.0.0.md`](ReleaseNotes_v1.0.0.md) | v1.0.0 release notes |
 | [`ReleaseNotes_v1.1.0.md`](ReleaseNotes_v1.1.0.md) | v1.1.0 release notes |
 | [`ReleaseNotes_v1.8.1.md`](ReleaseNotes_v1.8.1.md) | v1.8.1 release notes |
+| [`ReleaseNotes_v1.9.0.md`](ReleaseNotes_v1.9.0.md) | v1.9.0 release notes |
 | [`Patterns.md`](Patterns.md) | よくある処理パターン（レシピ集） |
 
 実際に動くコードは [`../sample`](../sample) を参照してください。
