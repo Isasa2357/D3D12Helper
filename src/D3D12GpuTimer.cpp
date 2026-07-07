@@ -1,7 +1,10 @@
 #include <D3D12Helper/D3D12Diagnostics/D3D12GpuTimer.hpp>
+#include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
 
+#include <cstddef>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace D3D12CoreLib {
 namespace {
