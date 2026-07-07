@@ -2,6 +2,18 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.10.1 - Shader Reflection hardening
+
+### Summary
+
+v1.10.1 adds DXIL/container bytecode support to shader reflection.
+
+### Changed
+
+- `ReflectShaderBytecode` now first tries `D3DReflect` for DXBC bytecode.
+- If `D3DReflect` fails, reflection falls back to `IDxcUtils::CreateReflection` for DXIL/container bytecode.
+- Added a DXC/DXIL reflection test that is skipped when DXC is unavailable.
+
 ## v1.10.0 - Shader Reflection
 
 ### Summary
