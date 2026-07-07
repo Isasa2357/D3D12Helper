@@ -2,6 +2,35 @@
 
 All notable changes to D3D12Helper are documented here.
 
+## v1.9.1 - Packaging hardening
+
+### Summary
+
+v1.9.1 adds install-tree consumer smoke tests and package metadata hardening.
+
+### Added
+
+- `PackageSmoke` CTest entry.
+- Minimal installed-package consumer project.
+- Install / find_package / consumer-build smoke script.
+
+### Changed
+
+- `D3D12HelperConfig.cmake` now exposes `D3D12Helper_VERSION` and `D3D12Helper_SHADER_DIR`.
+
+## v1.9.0 - Packaging
+
+### Summary
+
+v1.9.0 adds install/export package support for CMake consumers.
+
+### Added
+
+- Install rules for library, headers, and shader assets.
+- CMake package config files.
+- Exported `D3D12Helper::D3D12Helper` package target.
+- Packaging documentation.
+
 ## v1.8.1 - Test hardening
 
 ### Summary

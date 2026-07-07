@@ -8,13 +8,23 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(D3D12Helper
-    VERSION 1.8.1
+    VERSION 1.9.1
     LANGUAGES CXX
 )
+
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(D3D12HELPER_INSTALL_DEFAULT ON)
+    set(D3D12HELPER_PACKAGE_SMOKE_DEFAULT ON)
+else()
+    set(D3D12HELPER_INSTALL_DEFAULT OFF)
+    set(D3D12HELPER_PACKAGE_SMOKE_DEFAULT OFF)
+endif()
 
 option(D3D12HELPER_BUILD_SAMPLES   "Build D3D12Helper samples"            ON)
 option(D3D12HELPER_BUILD_TESTS     "Build D3D12Helper tests"              ON)
 option(D3D12HELPER_ENABLE_WARNINGS "Enable compiler warnings for library" ON)
+option(D3D12HELPER_INSTALL         "Enable D3D12Helper install rules"     ${D3D12HELPER_INSTALL_DEFAULT})
+option(D3D12HELPER_ENABLE_PACKAGE_SMOKE_TESTS "Enable install/find_package smoke tests" ${D3D12HELPER_PACKAGE_SMOKE_DEFAULT})
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,6 +36,9 @@ if(NOT WIN32)
         "No targets will be generated on this platform.")
     return()
 endif()
+
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(D3D12HelperDxcRuntime)
@@ -45,7 +58,8 @@ add_library(D3D12Helper::D3D12Helper ALIAS D3D12Helper)
 
 target_include_directories(D3D12Helper
     PUBLIC
-        "${D3D12HELPER_INCLUDE_DIR}"
+        $<BUILD_INTERFACE:${D3D12HELPER_INCLUDE_DIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 target_compile_definitions(D3D12Helper
@@ -69,6 +83,51 @@ if(MSVC)
     if(D3D12HELPER_ENABLE_WARNINGS)
         target_compile_options(D3D12Helper PRIVATE /W4)
     endif()
+endif()
+
+if(D3D12HELPER_INSTALL)
+    set(D3D12HELPER_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/D3D12Helper")
+
+    install(TARGETS D3D12Helper
+        EXPORT D3D12HelperTargets
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    )
+
+    install(DIRECTORY "${D3D12HELPER_INCLUDE_DIR}/"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    )
+
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/shaders/"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/D3D12Helper/shaders"
+        OPTIONAL
+    )
+
+    install(EXPORT D3D12HelperTargets
+        FILE D3D12HelperTargets.cmake
+        NAMESPACE D3D12Helper::
+        DESTINATION "${D3D12HELPER_INSTALL_CMAKEDIR}"
+    )
+
+    configure_package_config_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/D3D12HelperConfig.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/D3D12HelperConfig.cmake"
+        INSTALL_DESTINATION "${D3D12HELPER_INSTALL_CMAKEDIR}"
+    )
+
+    write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/D3D12HelperConfigVersion.cmake"
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+    )
+
+    install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/D3D12HelperConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/D3D12HelperConfigVersion.cmake"
+        DESTINATION "${D3D12HELPER_INSTALL_CMAKEDIR}"
+    )
 endif()
 
 if(D3D12HELPER_BUILD_SAMPLES)
