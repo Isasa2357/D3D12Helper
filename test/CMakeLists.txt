@@ -130,6 +130,7 @@ set(D3D12HELPER_TEST_SUITES
     Binding
     Diagnostics
     CopyResolveMipmap
+    ViewState
     Processing
     ProcessingBlur
     ProcessingRegionEffect
