@@ -1,5 +1,14 @@
 # D3D12Interop
 
-D3D12Interop is the canonical module for shared resource and fence interop helpers.
+D3D12Interop is the canonical module for shared handle, shared resource, and shared fence helpers.
 
-v1.1.0 adds the umbrella include for the existing shared texture and fence APIs.
+## Added in v1.8.0
+
+- D3D12SharedHandle
+- CreateSharedHandleForResource
+- OpenSharedResource
+- CreateSharedTexture2DResource
+- CreateSharedHandleForFence
+- OpenSharedFence
+
+The existing low-level shared resource and shared fence APIs remain available.
