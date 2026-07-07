@@ -56,8 +56,35 @@ After `find_package(D3D12Helper CONFIG REQUIRED)`, these variables are available
 
 - `D3D12Helper_VERSION`
 - `D3D12Helper_SHADER_DIR`
+- `D3D12Helper_PROCESSING_SHADER_DIR`
 
-`D3D12Helper_SHADER_DIR` points to the installed shader asset directory.
+`D3D12Helper_SHADER_DIR` points to the installed helper-specific shader asset root. `D3D12Helper_PROCESSING_SHADER_DIR` points to the installed D3D12Processing shader directory.
+
+## Runtime shader asset layout
+
+Use a helper-specific shader root when copying runtime assets:
+
+```text
+MyApp.exe
+D3D12Helper/
+  shaders/
+    D3D12Processing/
+      *.hlsl
+```
+
+Do not flatten D3D11Helper and D3D12Helper shaders into one shared `shaders/` directory. The two helpers may contain HLSL files with the same names.
+
+For backward compatibility, `D3D12ProcessingContext` still falls back to the legacy default path:
+
+```text
+shaders/D3D12Processing
+```
+
+However, new applications should use:
+
+```text
+D3D12Helper/shaders/D3D12Processing
+```
 
 ## Package smoke test
 
@@ -67,7 +94,8 @@ The `PackageSmoke` CTest entry performs:
 
 1. `cmake --install` into a temporary prefix.
 2. Configure a minimal consumer project with `find_package(D3D12Helper CONFIG REQUIRED)`.
-3. Build that consumer project.
+3. Validate the installed namespaced shader variables.
+4. Build that consumer project.
 
 Disable it explicitly with:
 
