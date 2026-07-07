@@ -1,0 +1,12 @@
+#pragma once
+#include <D3D12Helper/D3D12Framework/D3D12Resource.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12DescriptorHandle.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12DescriptorHeap.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12DescriptorAllocator.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12UploadBuffer.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12UploadRing.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12ReadbackBuffer.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12ComputePipeline.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12GraphicsPipeline.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12Helpers.hpp>
+#include <D3D12Helper/D3D12Framework/D3D12ShaderCompiler.hpp>
