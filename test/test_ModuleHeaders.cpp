@@ -6,6 +6,7 @@
 #include <D3D12Helper/D3D12Presentation/D3D12Presentation.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12Processing.hpp>
 #include <D3D12Helper/D3D12Interop/D3D12Interop.hpp>
+#include <D3D12Helper/D3D12Diagnostics/D3D12Diagnostics.hpp>
 #include <D3D12Helper/D3D12Framework/D3D12Framework.hpp>
 
 TEST(ModuleHeaders, UmbrellaIncludes) {
