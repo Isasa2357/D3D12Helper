@@ -8,7 +8,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(D3D12Helper
-    VERSION 1.7.0
+    VERSION 1.8.0
     LANGUAGES CXX
 )
 
