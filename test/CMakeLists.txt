@@ -107,6 +107,7 @@ endif()
 add_dependencies(d3d12helper_tests ${D3D12HELPER_TEST_RUNTIME_TARGET})
 
 set(D3D12HELPER_TEST_SUITES
+    ModuleHeaders
     FormatUtil
     DxgiUtil
     ThrowIfFailed
