@@ -145,6 +145,7 @@ set(D3D12HELPER_TEST_SUITES
     ProcessingPyramid
     ProcessingPyramidBlur
     ProcessingPyramidRegionBlur
+    ProcessingFusedPipeline
 )
 
 foreach(suite IN LISTS D3D12HELPER_TEST_SUITES)
