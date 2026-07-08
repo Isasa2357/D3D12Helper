@@ -6,11 +6,13 @@
 
 #include <d3dcompiler.h>
 
+#include <algorithm>
 #include <climits>   // UINT_MAX
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace D3D12CoreLib {
 
@@ -142,6 +144,48 @@ std::string DescribeGraphicsPipelineDesc(const D3D12_GRAPHICS_PIPELINE_STATE_DES
     return oss.str();
 }
 
+std::string CollectInfoQueueMessages(ID3D12Device* device, const UINT64 maxMessages = 32) {
+    if (!device) return {};
+    ComPtr<ID3D12InfoQueue> infoQueue;
+    if (FAILED(device->QueryInterface(IID_PPV_ARGS(&infoQueue))) || !infoQueue) {
+        return {};
+    }
+
+    const UINT64 count = infoQueue->GetNumStoredMessagesAllowedByRetrievalFilter();
+    if (count == 0) {
+        return {};
+    }
+
+    std::ostringstream oss;
+    oss << "\nD3D12 InfoQueue messages:";
+    const UINT64 begin = count > maxMessages ? count - maxMessages : 0;
+    for (UINT64 i = begin; i < count; ++i) {
+        SIZE_T messageBytes = 0;
+        HRESULT hr = infoQueue->GetMessage(i, nullptr, &messageBytes);
+        if (hr != S_FALSE && FAILED(hr)) {
+            continue;
+        }
+        std::vector<char> storage(messageBytes);
+        auto* message = reinterpret_cast<D3D12_MESSAGE*>(storage.data());
+        if (FAILED(infoQueue->GetMessage(i, message, &messageBytes))) {
+            continue;
+        }
+        oss << "\n  [" << i << "] severity=" << static_cast<int>(message->Severity)
+            << " category=" << static_cast<int>(message->Category)
+            << " id=" << static_cast<int>(message->ID)
+            << " desc=" << (message->pDescription ? message->pDescription : "");
+    }
+    return oss.str();
+}
+
+void ClearInfoQueueMessages(ID3D12Device* device) {
+    if (!device) return;
+    ComPtr<ID3D12InfoQueue> infoQueue;
+    if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&infoQueue))) && infoQueue) {
+        infoQueue->ClearStoredMessages();
+    }
+}
+
 ComPtr<ID3D12RootSignature> CreateBasicTextureRootSignature(ID3D12Device* device) {
     D3D12_DESCRIPTOR_RANGE srvRange{};
     srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
@@ -249,6 +293,7 @@ void D3D12GraphicsPipeline::Initialize(
     pso.SampleDesc.Count   = desc.sampleCount == 0 ? 1 : desc.sampleCount;
     pso.SampleDesc.Quality = desc.sampleQuality;
 
+    ClearInfoQueueMessages(device);
     HRESULT hr = device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&m_pso));
     if (FAILED(hr) && desc.numRenderTargets == 1 && desc.inputLayout.size() == 2 && !desc.ps.Empty()) {
         auto fallbackRootSignature = CreateBasicTextureRootSignature(device);
@@ -261,7 +306,8 @@ void D3D12GraphicsPipeline::Initialize(
         }
     }
     if (FAILED(hr)) {
-        const std::string detail = DescribeGraphicsPipelineDesc(pso);
+        std::string detail = DescribeGraphicsPipelineDesc(pso);
+        detail += CollectInfoQueueMessages(device);
         ThrowIfFailed(hr, "device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&m_pso))", __FILE__, __LINE__, detail.c_str());
     }
 }
@@ -280,9 +326,11 @@ void D3D12GraphicsPipeline::InitializeRaw(
     D3D12_GRAPHICS_PIPELINE_STATE_DESC copy = psoDesc;
     copy.pRootSignature = m_rootSig.Get();
 
+    ClearInfoQueueMessages(device);
     const HRESULT hr = device->CreateGraphicsPipelineState(&copy, IID_PPV_ARGS(&m_pso));
     if (FAILED(hr)) {
-        const std::string detail = DescribeGraphicsPipelineDesc(copy);
+        std::string detail = DescribeGraphicsPipelineDesc(copy);
+        detail += CollectInfoQueueMessages(device);
         ThrowIfFailed(hr, "device->CreateGraphicsPipelineState(&copy, IID_PPV_ARGS(&m_pso))", __FILE__, __LINE__, detail.c_str());
     }
 }
