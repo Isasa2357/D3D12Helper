@@ -80,6 +80,90 @@ std::string NormalizeD3DCompileTarget(const std::string& target) {
     return target;
 }
 
+bool IsPixelShaderTarget(const std::string& target) {
+    return target.rfind("ps_", 0) == 0;
+}
+
+bool IsTokenChar(char c) {
+    return (c >= 'A' && c <= 'Z') ||
+           (c >= 'a' && c <= 'z') ||
+           (c >= '0' && c <= '9') ||
+           c == '_';
+}
+
+bool IsTokenAt(const std::string& text, std::size_t pos, const char* token) {
+    const std::size_t tokenLen = std::strlen(token);
+    if (pos + tokenLen > text.size()) {
+        return false;
+    }
+    if (text.compare(pos, tokenLen, token) != 0) {
+        return false;
+    }
+    const bool beforeOk = pos == 0 || !IsTokenChar(text[pos - 1]);
+    const bool afterOk = pos + tokenLen >= text.size() || !IsTokenChar(text[pos + tokenLen]);
+    return beforeOk && afterOk;
+}
+
+bool LooksLikeLegacyTexcoordPixelMain(const std::string& source) {
+    // Detect the legacy pixel-shader entry shape used by VarjoXR user shaders:
+    //     float4 main(float2 uv : TEXCOORD0) : SV_TARGET
+    // D3D12 can assign TEXCOORD to a different hardware register than the VS output
+    // when the PS has only a standalone TEXCOORD parameter. We only wrap this old
+    // one-parameter form; struct-based PS inputs are left untouched.
+    std::size_t pos = 0;
+    while ((pos = source.find("main", pos)) != std::string::npos) {
+        if (!IsTokenAt(source, pos, "main")) {
+            pos += 4;
+            continue;
+        }
+        const std::size_t open = source.find('(', pos + 4);
+        if (open == std::string::npos || open - pos > 64) {
+            pos += 4;
+            continue;
+        }
+        const std::size_t close = source.find(')', open + 1);
+        if (close == std::string::npos) {
+            return false;
+        }
+        const std::string params = source.substr(open + 1, close - open - 1);
+        if (params.find(',') == std::string::npos &&
+            params.find("float2") != std::string::npos &&
+            params.find("TEXCOORD") != std::string::npos) {
+            return true;
+        }
+        pos = close + 1;
+    }
+    return false;
+}
+
+std::string WrapLegacyTexcoordPixelShaderForD3D12(const std::string& hlslSource,
+                                                  const std::string& normalizedTarget) {
+    if (!IsPixelShaderTarget(normalizedTarget)) {
+        return hlslSource;
+    }
+    if (!LooksLikeLegacyTexcoordPixelMain(hlslSource)) {
+        return hlslSource;
+    }
+
+    std::ostringstream oss;
+    oss << "// D3D12Helper compatibility wrapper for legacy PS main(float2 uv : TEXCOORD0).\n";
+    oss << "// The real D3D12 PS entry receives SV_POSITION and TEXCOORD0 so VS/PS\n";
+    oss << "// hardware register assignment stays compatible.\n";
+    oss << "#define main D3D12Helper_LegacyPixelMain\n";
+    oss << hlslSource << "\n";
+    oss << "#undef main\n";
+    oss << "struct D3D12Helper_LegacyPSInput\n";
+    oss << "{\n";
+    oss << "    float4 position : SV_POSITION;\n";
+    oss << "    float2 uv : TEXCOORD0;\n";
+    oss << "};\n";
+    oss << "float4 main(D3D12Helper_LegacyPSInput input) : SV_TARGET\n";
+    oss << "{\n";
+    oss << "    return D3D12Helper_LegacyPixelMain(input.uv);\n";
+    oss << "}\n";
+    return oss.str();
+}
+
 std::vector<D3D_SHADER_MACRO> MakeD3DCompileMacros(const std::vector<ShaderMacro>& defines) {
     std::vector<D3D_SHADER_MACRO> macros;
     macros.reserve(defines.size() + 1);
@@ -163,12 +247,15 @@ ShaderBytecode CompileD3DCompileInternal(
     if (target.empty()) throw std::runtime_error("D3DCompile: empty target");
 
     const std::string normalizedTarget = NormalizeD3DCompileTarget(target);
+    const std::string sourceToCompile = WrapLegacyTexcoordPixelShaderForD3D12(
+        hlslSource,
+        normalizedTarget);
 
     ComPtr<ID3DBlob> blob;
     ComPtr<ID3DBlob> errors;
     const HRESULT hr = D3DCompile(
-        hlslSource.data(),
-        hlslSource.size(),
+        sourceToCompile.data(),
+        sourceToCompile.size(),
         sourceName.c_str(),
         macros,
         includeHandler,
