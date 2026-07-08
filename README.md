@@ -326,6 +326,7 @@ ProcessingMask
 ProcessingThreshold
 ProcessingPyramid
 ProcessingPyramidBlur
+ProcessingPyramidRegionBlur
 AdvancedProcessing
 ```
 
