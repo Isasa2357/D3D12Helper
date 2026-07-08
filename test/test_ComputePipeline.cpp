@@ -4,6 +4,7 @@
 #include "TestCommon.hpp"
 
 #include <cstdint>
+#include <stdexcept>
 
 using namespace D3D12CoreLib;
 
@@ -19,6 +20,31 @@ void main(uint3 id : SV_DispatchThreadID) {
     gOutput[id.xy] = float4(v, v, v, 1.0f);
 }
 )";
+
+const char* kNoResourceCs = R"(
+[numthreads(1,1,1)]
+void main(uint3 id : SV_DispatchThreadID) { }
+)";
+
+ComPtr<ID3D12RootSignature> MakeComputeRootSig(ID3D12Device* device) {
+    D3D12_VERSIONED_ROOT_SIGNATURE_DESC v = {};
+    v.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
+    v.Desc_1_1.NumParameters = 0;
+    v.Desc_1_1.pParameters = nullptr;
+    v.Desc_1_1.NumStaticSamplers = 0;
+    v.Desc_1_1.pStaticSamplers = nullptr;
+    v.Desc_1_1.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+    ComPtr<ID3DBlob> blob;
+    ComPtr<ID3DBlob> err;
+    D3D12CORE_THROW_IF_FAILED(D3D12SerializeVersionedRootSignature(&v, &blob, &err));
+
+    ComPtr<ID3D12RootSignature> rootSig;
+    D3D12CORE_THROW_IF_FAILED(device->CreateRootSignature(
+        0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&rootSig)));
+    return rootSig;
+}
+
 } // namespace
 
 TEST(ComputePipeline, TemplateSlotIndices) {
@@ -40,13 +66,119 @@ TEST(ComputePipeline, TemplateSlotIndices) {
     CHECK(pipeline.RootConstantsIndex() != UINT_MAX);
 }
 
+TEST(ComputePipeline, TemplateSlotIndexCombinations) {
+    REQUIRE_CORE(core);
+    REQUIRE_DXC();
+    ShaderBytecode cs = CompileShaderFromSource_Dxc(kNoResourceCs, "main", "cs_6_0");
+
+    {
+        ComputePipelineDesc pd;
+        D3D12ComputePipeline pipeline;
+        pipeline.InitializeWithTemplate(core->GetDevice(), cs, pd);
+        CHECK(pipeline.GetRootSignature() != nullptr);
+        CHECK(pipeline.GetPipelineState() != nullptr);
+        CHECK(pipeline.SrvTableIndex() == UINT_MAX);
+        CHECK(pipeline.UavTableIndex() == UINT_MAX);
+        CHECK(pipeline.RootConstantsIndex() == UINT_MAX);
+    }
+
+    {
+        ComputePipelineDesc pd;
+        pd.numSrvs = 2;
+        D3D12ComputePipeline pipeline;
+        pipeline.InitializeWithTemplate(core->GetDevice(), cs, pd);
+        CHECK_EQ(pipeline.SrvTableIndex(), 0u);
+        CHECK(pipeline.UavTableIndex() == UINT_MAX);
+        CHECK(pipeline.RootConstantsIndex() == UINT_MAX);
+    }
+
+    {
+        ComputePipelineDesc pd;
+        pd.numUavs = 2;
+        pd.numRootConstantValues = 4;
+        D3D12ComputePipeline pipeline;
+        pipeline.InitializeWithTemplate(core->GetDevice(), cs, pd);
+        CHECK(pipeline.SrvTableIndex() == UINT_MAX);
+        CHECK_EQ(pipeline.UavTableIndex(), 0u);
+        CHECK_EQ(pipeline.RootConstantsIndex(), 1u);
+    }
+
+    {
+        ComputePipelineDesc pd;
+        pd.numSrvs = 1;
+        pd.numUavs = 1;
+        pd.numRootConstantValues = 1;
+        D3D12ComputePipeline pipeline;
+        pipeline.InitializeWithTemplate(core->GetDevice(), cs, pd);
+        CHECK_EQ(pipeline.SrvTableIndex(), 0u);
+        CHECK_EQ(pipeline.UavTableIndex(), 1u);
+        CHECK_EQ(pipeline.RootConstantsIndex(), 2u);
+    }
+}
+
+TEST(ComputePipeline, InitializeRejectsInvalidArguments) {
+    REQUIRE_CORE(core);
+    REQUIRE_DXC();
+    ShaderBytecode cs = CompileShaderFromSource_Dxc(kNoResourceCs, "main", "cs_6_0");
+    ShaderBytecode empty;
+    D3D12ComputePipeline pipeline;
+    ComputePipelineDesc pd;
+
+    CHECK_THROWS(pipeline.InitializeWithTemplate(nullptr, cs, pd));
+    CHECK_THROWS(pipeline.InitializeWithTemplate(core->GetDevice(), empty, pd));
+    CHECK_THROWS(pipeline.Initialize(nullptr, MakeComputeRootSig(core->GetDevice()), cs));
+    CHECK_THROWS(pipeline.Initialize(core->GetDevice(), nullptr, cs));
+    CHECK_THROWS(pipeline.Initialize(core->GetDevice(), MakeComputeRootSig(core->GetDevice()), empty));
+}
+
+TEST(ComputePipeline, CustomRootSignatureInitializeAndReinitialize) {
+    REQUIRE_CORE(core);
+    REQUIRE_DXC();
+    ShaderBytecode cs = CompileShaderFromSource_Dxc(kNoResourceCs, "main", "cs_6_0");
+
+    D3D12ComputePipeline pipeline;
+    pipeline.Initialize(core->GetDevice(), MakeComputeRootSig(core->GetDevice()), cs);
+    CHECK(pipeline.GetRootSignature() != nullptr);
+    CHECK(pipeline.GetPipelineState() != nullptr);
+    CHECK(pipeline.SrvTableIndex() == UINT_MAX);
+    CHECK(pipeline.UavTableIndex() == UINT_MAX);
+    CHECK(pipeline.RootConstantsIndex() == UINT_MAX);
+
+    ComputePipelineDesc pd;
+    pd.numSrvs = 1;
+    pd.numUavs = 1;
+    pipeline.InitializeWithTemplate(core->GetDevice(), cs, pd);
+    CHECK_EQ(pipeline.SrvTableIndex(), 0u);
+    CHECK_EQ(pipeline.UavTableIndex(), 1u);
+    CHECK(pipeline.RootConstantsIndex() == UINT_MAX);
+}
+
 TEST(ComputePipeline, BindRejectsUninitializedPipeline) {
     REQUIRE_CORE(core);
     D3D12CommandContext ctx = core->CreateDirectContext();
     ctx.Reset();
     D3D12ComputePipeline pipeline;
     CHECK_THROWS(pipeline.Bind(ctx));
+    CHECK_THROWS(pipeline.Bind(static_cast<ID3D12GraphicsCommandList*>(nullptr)));
     CHECK_THROWS(pipeline.Dispatch(ctx, 1, 1, 1));
+    CHECK_THROWS(pipeline.Dispatch(static_cast<ID3D12GraphicsCommandList*>(nullptr), 1, 1, 1));
+    ctx.Close();
+}
+
+TEST(ComputePipeline, DispatchRejectsZeroGroupCounts) {
+    REQUIRE_CORE(core);
+    REQUIRE_DXC();
+    ShaderBytecode cs = CompileShaderFromSource_Dxc(kNoResourceCs, "main", "cs_6_0");
+
+    D3D12ComputePipeline pipeline;
+    pipeline.Initialize(core->GetDevice(), MakeComputeRootSig(core->GetDevice()), cs);
+
+    D3D12CommandContext ctx = core->CreateDirectContext();
+    ctx.Reset();
+    pipeline.Bind(ctx);
+    CHECK_THROWS(pipeline.Dispatch(ctx, 0, 1, 1));
+    CHECK_THROWS(pipeline.Dispatch(ctx, 1, 0, 1));
+    CHECK_THROWS(pipeline.Dispatch(ctx, 1, 1, 0));
     ctx.Close();
 }
 
