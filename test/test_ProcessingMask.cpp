@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -115,6 +116,55 @@ void RequireByteNear(uint8_t actual, uint8_t expected, uint8_t tolerance, const 
     }
 }
 
+void RequirePixelNear(
+    const std::vector<uint8_t>& got,
+    const uint8_t* expected,
+    uint8_t tolerance,
+    const char* label) {
+
+    for (size_t i = 0; i < 4; ++i) {
+        RequireByteNear(got[i], expected[i], tolerance, label, i);
+    }
+}
+
+std::vector<uint8_t> RunApplyMask1x1(
+    D3D12Core& core,
+    D3D12MaskProcessor& processor,
+    const uint8_t srcPixel[4],
+    const uint8_t maskPixel[4],
+    MaskApplyDesc desc) {
+
+    auto src = CreateTexture2DFromRGBA(&core == nullptr ? core : core, srcPixel, 1, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    auto mask = CreateTexture2DFromRGBA(core, maskPixel, 1, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    auto dst = processor.CreateOutputTexture(core, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM);
+
+    auto ctx = core.CreateDirectContext();
+    ctx.Reset();
+    processor.RecordApplyMask(ctx, src, mask, dst, desc);
+    auto rb = RecordReadbackTexture2D(core, ctx, dst);
+    ExecuteAndWait(core, ctx);
+    return ReadbackCompactRgba(rb);
+}
+
+std::vector<uint8_t> RunCombine1x1(
+    D3D12Core& core,
+    D3D12MaskProcessor& processor,
+    const uint8_t maskA[4],
+    const uint8_t maskB[4],
+    MaskCombineDesc desc) {
+
+    auto a = CreateTexture2DFromRGBA(core, maskA, 1, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    auto b = CreateTexture2DFromRGBA(core, maskB, 1, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    auto dst = processor.CreateOutputTexture(core, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM);
+
+    auto ctx = core.CreateDirectContext();
+    ctx.Reset();
+    processor.RecordCombineMasks(ctx, a, b, dst, desc);
+    auto rb = RecordReadbackTexture2D(core, ctx, dst);
+    ExecuteAndWait(core, ctx);
+    return ReadbackCompactRgba(rb);
+}
+
 } // namespace
 
 TEST(ProcessingMask, ShaderCompile) {
@@ -128,6 +178,57 @@ TEST(ProcessingMask, ShaderCompile) {
     CHECK(!cache.GetComputeShader("MaskBlendRgba.hlsl").Empty());
     CHECK(!cache.GetComputeShader("MaskCombineRgba.hlsl").Empty());
     CHECK(!cache.GetComputeShader("MaskInvertRgba.hlsl").Empty());
+}
+
+TEST(ProcessingMask, ValidationPaths) {
+    REQUIRE_CORE(core);
+    Fixture fx(core);
+    D3D12MaskProcessor uninitialized;
+    D3D12Resource nullResource;
+    CHECK_THROWS(uninitialized.CreateOutputTexture(*core, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM));
+
+    D3D12MaskProcessor processor;
+    processor.Initialize(fx.processing);
+    CHECK_THROWS(processor.CreateOutputTexture(*core, 0, 1, DXGI_FORMAT_R8G8B8A8_UNORM));
+    CHECK_THROWS(processor.CreateOutputTexture(*core, 1, 0, DXGI_FORMAT_R8G8B8A8_UNORM));
+    CHECK_THROWS(processor.CreateOutputTexture(*core, 1, 1, DXGI_FORMAT_NV12));
+
+    auto src = CreateTexture2D(*core, 2, 2, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON);
+    auto dstNoUav = CreateTexture2D(*core, 2, 2, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_STATE_COMMON);
+    auto dst = processor.CreateOutputTexture(*core, 2, 2, DXGI_FORMAT_R8G8B8A8_UNORM);
+    auto buffer = CreateBuffer(*core, 16, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON);
+    auto ctx = core->CreateDirectContext();
+    ctx.Reset();
+
+    MaskApplyDesc apply = {};
+    CHECK_THROWS(processor.RecordApplyMask(ctx, nullResource, src, dst, apply));
+    CHECK_THROWS(processor.RecordApplyMask(ctx, src, nullResource, dst, apply));
+    CHECK_THROWS(processor.RecordApplyMask(ctx, buffer, src, dst, apply));
+    CHECK_THROWS(processor.RecordApplyMask(ctx, src, src, dstNoUav, apply));
+    CHECK_THROWS(processor.RecordApplyMask(ctx, src, src, src, apply));
+    apply.mode = static_cast<MaskApplyMode>(999u);
+    CHECK_THROWS(processor.RecordApplyMask(ctx, src, src, dst, apply));
+    apply.mode = MaskApplyMode::ApplyAlpha;
+    apply.channel = static_cast<MaskChannel>(999u);
+    CHECK_THROWS(processor.RecordApplyMask(ctx, src, src, dst, apply));
+    apply.channel = MaskChannel::Alpha;
+    apply.strength = std::numeric_limits<float>::quiet_NaN();
+    CHECK_THROWS(processor.RecordApplyMask(ctx, src, src, dst, apply));
+
+    MaskCombineDesc combine = {};
+    combine.mode = static_cast<MaskCombineMode>(999u);
+    CHECK_THROWS(processor.RecordCombineMasks(ctx, src, src, dst, combine));
+    combine.mode = MaskCombineMode::Max;
+    combine.channelA = static_cast<MaskChannel>(999u);
+    CHECK_THROWS(processor.RecordCombineMasks(ctx, src, src, dst, combine));
+    combine.channelA = MaskChannel::Alpha;
+    combine.scale = std::numeric_limits<float>::infinity();
+    CHECK_THROWS(processor.RecordCombineMasks(ctx, src, src, dst, combine));
+
+    MaskInvertDesc invert = {};
+    invert.channel = static_cast<MaskChannel>(999u);
+    CHECK_THROWS(processor.RecordInvertMask(ctx, src, dst, invert));
+    ctx.Close();
 }
 
 TEST(ProcessingMask, ApplyReplaceAlphaReadback) {
@@ -172,6 +273,107 @@ TEST(ProcessingMask, ApplyReplaceAlphaReadback) {
     }
 }
 
+TEST(ProcessingMask, ApplyAllModesChannelsInvertAndStrengthReadback) {
+    REQUIRE_CORE(core);
+    Fixture fx(core);
+    if (!fx.processing.SupportsRgba8Uav()) {
+        TEST_SKIP("R8G8B8A8 UAV typed store is not supported");
+    }
+
+    D3D12MaskProcessor processor;
+    processor.Initialize(fx.processing);
+    const uint8_t src[4] = { 100, 150, 200, 128 };
+    const uint8_t mask[4] = { 64, 128, 192, 255 };
+
+    {
+        MaskApplyDesc desc = {};
+        desc.mode = MaskApplyMode::ApplyAlpha;
+        desc.channel = MaskChannel::Red;
+        const auto got = RunApplyMask1x1(*core, processor, src, mask, desc);
+        const uint8_t expected[4] = { 100, 150, 200, 32 };
+        RequirePixelNear(got, expected, 2, "apply alpha red");
+    }
+    {
+        MaskApplyDesc desc = {};
+        desc.mode = MaskApplyMode::MultiplyRgb;
+        desc.channel = MaskChannel::Green;
+        const auto got = RunApplyMask1x1(*core, processor, src, mask, desc);
+        const uint8_t expected[4] = { 50, 75, 100, 128 };
+        RequirePixelNear(got, expected, 2, "multiply rgb green");
+    }
+    {
+        MaskApplyDesc desc = {};
+        desc.mode = MaskApplyMode::MultiplyRgba;
+        desc.channel = MaskChannel::Blue;
+        const auto got = RunApplyMask1x1(*core, processor, src, mask, desc);
+        const uint8_t expected[4] = { 75, 113, 151, 96 };
+        RequirePixelNear(got, expected, 2, "multiply rgba blue");
+    }
+    {
+        MaskApplyDesc desc = {};
+        desc.mode = MaskApplyMode::ReplaceAlpha;
+        desc.channel = MaskChannel::Alpha;
+        desc.invert = true;
+        const auto got = RunApplyMask1x1(*core, processor, src, mask, desc);
+        const uint8_t expected[4] = { 100, 150, 200, 0 };
+        RequirePixelNear(got, expected, 2, "replace alpha inverted");
+    }
+    {
+        MaskApplyDesc desc = {};
+        desc.mode = MaskApplyMode::MultiplyRgb;
+        desc.channel = MaskChannel::Alpha;
+        desc.strength = 0.5f;
+        const auto got = RunApplyMask1x1(*core, processor, src, mask, desc);
+        const uint8_t expected[4] = { 100, 150, 200, 128 };
+        RequirePixelNear(got, expected, 2, "strength keeps rgb when mask alpha is one");
+    }
+}
+
+TEST(ProcessingMask, CombineAllModesAndInvertReadback) {
+    REQUIRE_CORE(core);
+    Fixture fx(core);
+    if (!fx.processing.SupportsRgba8Uav()) {
+        TEST_SKIP("R8G8B8A8 UAV typed store is not supported");
+    }
+
+    D3D12MaskProcessor processor;
+    processor.Initialize(fx.processing);
+    const uint8_t a[4] = { 0, 0, 0, 192 };
+    const uint8_t b[4] = { 0, 0, 0, 64 };
+
+    struct Case { MaskCombineMode mode; uint8_t expected; const char* label; };
+    const Case cases[] = {
+        { MaskCombineMode::Add,      255, "combine add" },
+        { MaskCombineMode::Multiply, 48,  "combine multiply" },
+        { MaskCombineMode::Max,      192, "combine max" },
+        { MaskCombineMode::Min,      64,  "combine min" },
+        { MaskCombineMode::Subtract, 128, "combine subtract" },
+    };
+
+    for (const auto& c : cases) {
+        MaskCombineDesc desc = {};
+        desc.mode = c.mode;
+        desc.channelA = MaskChannel::Alpha;
+        desc.channelB = MaskChannel::Alpha;
+        const auto got = RunCombine1x1(*core, processor, a, b, desc);
+        RequireByteNear(got[0], c.expected, 2, c.label, 0);
+        RequireByteNear(got[1], c.expected, 2, c.label, 1);
+        RequireByteNear(got[2], c.expected, 2, c.label, 2);
+        RequireByteNear(got[3], c.expected, 2, c.label, 3);
+    }
+
+    MaskCombineDesc inverted = {};
+    inverted.mode = MaskCombineMode::Multiply;
+    inverted.channelA = MaskChannel::Alpha;
+    inverted.channelB = MaskChannel::Alpha;
+    inverted.invertA = true;
+    inverted.invertB = true;
+    inverted.scale = 0.5f;
+    inverted.bias = 0.25f;
+    const auto got = RunCombine1x1(*core, processor, a, b, inverted);
+    RequireByteNear(got[0], 88, 3, "combine invert scale bias", 0);
+}
+
 TEST(ProcessingMask, BlendCombineAndInvertReadback) {
     REQUIRE_CORE(core);
     Fixture fx(core);
@@ -208,5 +410,21 @@ TEST(ProcessingMask, BlendCombineAndInvertReadback) {
         RequireByteNear(got[i + 1], 128, 2, "blend g", i + 1);
         RequireByteNear(got[i + 2], 128, 2, "blend b", i + 2);
         RequireByteNear(got[i + 3], 128, 2, "blend a", i + 3);
+    }
+
+    auto inverted = processor.CreateOutputTexture(*core, 2, 2, DXGI_FORMAT_R8G8B8A8_UNORM);
+    MaskInvertDesc invertDesc = {};
+    invertDesc.channel = MaskChannel::Alpha;
+    ctx = core->CreateDirectContext();
+    ctx.Reset();
+    processor.RecordInvertMask(ctx, mask, inverted, invertDesc);
+    auto invRb = RecordReadbackTexture2D(*core, ctx, inverted);
+    ExecuteAndWait(*core, ctx);
+    const auto inv = ReadbackCompactRgba(invRb);
+    for (size_t i = 0; i < inv.size(); i += 4) {
+        RequireByteNear(inv[i + 0], 127, 2, "invert r", i + 0);
+        RequireByteNear(inv[i + 1], 127, 2, "invert g", i + 1);
+        RequireByteNear(inv[i + 2], 127, 2, "invert b", i + 2);
+        RequireByteNear(inv[i + 3], 127, 2, "invert a", i + 3);
     }
 }
