@@ -32,6 +32,7 @@ D3D12Diagnostics
 | [`D3D12Framework.md`](D3D12Framework.md) | v1.x 互換 Framework API リファレンス |
 | [`D3D12Presentation.md`](D3D12Presentation.md) | SwapChain / presentation helper |
 | [`D3D12Processing.md`](D3D12Processing.md) | Processing API リファレンス |
+| [`D3D12ProcessingWorkflow.md`](D3D12ProcessingWorkflow.md) | Processing HLSL library / custom fused shader workflow |
 | [`D3D12Interop.md`](D3D12Interop.md) | shared resource / shared fence interop |
 | [`D3D12Diagnostics.md`](D3D12Diagnostics.md) | debug layer / InfoQueue / DRED / object naming |
 | [`D3D12ProcessingFutureWork.md`](D3D12ProcessingFutureWork.md) | Processing Layer の future work |
@@ -196,4 +197,4 @@ int main() {
 }
 ```
 
-GPU で Compute を回して結果を CPU に戻す例は [`../sample/02_ComputeGrayscale`](../sample/02_ComputeGrayscale) と [`Patterns.md`](Patterns.md) を参照してください。Processing Layer の例は [`D3D12Processing.md`](D3D12Processing.md) と [`../sample`](../sample) を参照してください。
+GPU で Compute を回して結果を CPU に戻す例は [`../sample/02_ComputeGrayscale`](../sample/02_ComputeGrayscale) と [`Patterns.md`](Patterns.md) を参照してください。Processing Layer の例は [`D3D12Processing.md`](D3D12Processing.md)、[`D3D12ProcessingWorkflow.md`](D3D12ProcessingWorkflow.md)、[`../sample`](../sample) を参照してください。
