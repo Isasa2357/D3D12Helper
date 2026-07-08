@@ -26,6 +26,10 @@ This release starts the v1.12.0 Processing expansion with explicit matrix-based 
   - `shaders/D3D12Processing/ApplyLut3D.hlsl`
 - Added test suite:
   - `AdvancedProcessing`
+  - Shader compilation tests
+  - Public default tests
+  - Initialization / output texture creation tests
+  - Golden runtime tests for affine identity, perspective identity, and 3D LUT identity
 
 ## Scope
 
@@ -34,6 +38,6 @@ The current implementation supports RGBA-like source and destination textures. T
 ## Non-goals for this first v1.12.0 step
 
 - D3D11 parity implementation. This should follow after the D3D12 API shape is validated.
-- Full runtime golden-image coverage for affine / perspective / LUT output. The current tests cover shader compilation, public defaults, initialization, and output texture creation.
+- Exhaustive transform coverage such as rotation / scale / arbitrary homography golden cases.
 - 1D LUT / 2D strip LUT variants.
 - Automatic generation of undistort maps from camera calibration parameters.
