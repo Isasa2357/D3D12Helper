@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <utility>
 
 using namespace D3D12CoreLib;
 using namespace D3D12CoreLib::Processing;
