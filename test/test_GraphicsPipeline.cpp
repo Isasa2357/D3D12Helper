@@ -348,6 +348,8 @@ TEST(GraphicsPipeline, OffscreenDrawsVertexIdTriangleWithoutInputLayout) {
     gd.vs = std::move(vs);
     gd.ps = std::move(ps);
     gd.rtvFormats[0] = fmt;
+    D3D12_RASTERIZER_DESC noCull = PipelineDefaults::Rasterizer(D3D12_CULL_MODE_NONE);
+    gd.rasterizer = &noCull;
 
     D3D12GraphicsPipeline pipeline;
     pipeline.Initialize(device, MakeEmptyRootSig(device), gd);
