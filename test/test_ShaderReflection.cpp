@@ -60,7 +60,8 @@ void main(uint3 id : SV_DispatchThreadID) {
 } // namespace
 
 TEST(ShaderReflection, ReflectsResourceBindingsAndConstantBuffers) {
-    ShaderBytecode bytecode = CompileShaderFromSource_D3DCompile(kPixelShader, "main", "ps_5_1");
+    REQUIRE_DXC();
+    ShaderBytecode bytecode = CompileShaderFromSource_Dxc(kPixelShader, "main", "ps_6_0");
     ShaderReflectionInfo reflection = ReflectShaderBytecode(bytecode);
 
     CHECK(reflection.boundResourceCount >= 3);
@@ -125,4 +126,22 @@ TEST(ShaderReflection, ThrowsOnEmptyBytecode) {
     CHECK_THROWS(ReflectShaderBytecode(nullptr, 0));
     ShaderBytecode empty;
     CHECK_THROWS(ReflectShaderBytecode(empty));
+}
+
+TEST(ShaderReflection, ReflectsDxcDxilComputeShader) {
+    REQUIRE_DXC();
+    const char* hlsl = R"(
+RWStructuredBuffer<uint> gOut : register(u0);
+[numthreads(2,3,4)]
+void main(uint3 id : SV_DispatchThreadID) { gOut[id.x] = id.x; }
+)";
+    ShaderBytecode bytecode = CompileShaderFromSource_Dxc(hlsl, "main", "cs_6_0");
+    ShaderReflectionInfo reflection = ReflectShaderBytecode(bytecode);
+    CHECK(reflection.threadGroupSizeX == 2);
+    CHECK(reflection.threadGroupSizeY == 3);
+    CHECK(reflection.threadGroupSizeZ == 4);
+    const auto* out = FindResourceBinding(reflection, "gOut");
+    CHECK(out != nullptr);
+    CHECK(out->type == D3D_SIT_UAV_RWSTRUCTURED);
+    CHECK(out->bindPoint == 0);
 }
