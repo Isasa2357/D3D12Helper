@@ -4,6 +4,8 @@
 #include <D3D12Helper/D3D12Framework/D3D12GraphicsPipeline.hpp>
 #include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
 
+#include <d3dcompiler.h>
+
 #include <climits>   // UINT_MAX
 #include <sstream>
 #include <stdexcept>
@@ -140,6 +142,64 @@ std::string DescribeGraphicsPipelineDesc(const D3D12_GRAPHICS_PIPELINE_STATE_DES
     return oss.str();
 }
 
+ComPtr<ID3D12RootSignature> CreateBasicTextureRootSignature(ID3D12Device* device) {
+    D3D12_DESCRIPTOR_RANGE srvRange{};
+    srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    srvRange.NumDescriptors = 1;
+    srvRange.BaseShaderRegister = 0;
+    srvRange.RegisterSpace = 0;
+    srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    D3D12_ROOT_PARAMETER parameters[2]{};
+    parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    parameters[0].Descriptor.ShaderRegister = 0;
+    parameters[0].Descriptor.RegisterSpace = 0;
+    parameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+    parameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    parameters[1].DescriptorTable.NumDescriptorRanges = 1;
+    parameters[1].DescriptorTable.pDescriptorRanges = &srvRange;
+    parameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+    D3D12_STATIC_SAMPLER_DESC sampler{};
+    sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    sampler.MipLODBias = 0.0f;
+    sampler.MaxAnisotropy = 1;
+    sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+    sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+    sampler.MinLOD = 0.0f;
+    sampler.MaxLOD = D3D12_FLOAT32_MAX;
+    sampler.ShaderRegister = 0;
+    sampler.RegisterSpace = 0;
+    sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+    D3D12_ROOT_SIGNATURE_DESC rootDesc{};
+    rootDesc.NumParameters = 2;
+    rootDesc.pParameters = parameters;
+    rootDesc.NumStaticSamplers = 1;
+    rootDesc.pStaticSamplers = &sampler;
+    rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+    ComPtr<ID3DBlob> signature;
+    ComPtr<ID3DBlob> error;
+    D3D12CORE_THROW_IF_FAILED_MSG(
+        D3D12SerializeRootSignature(&rootDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error),
+        "D3D12 fallback root signature serialization failed");
+
+    ComPtr<ID3D12RootSignature> rootSignature;
+    D3D12CORE_THROW_IF_FAILED_MSG(
+        device->CreateRootSignature(
+            0,
+            signature->GetBufferPointer(),
+            signature->GetBufferSize(),
+            IID_PPV_ARGS(rootSignature.GetAddressOf())),
+        "D3D12 fallback root signature creation failed");
+    return rootSignature;
+}
+
 } // namespace
 
 void D3D12GraphicsPipeline::Initialize(
@@ -189,7 +249,17 @@ void D3D12GraphicsPipeline::Initialize(
     pso.SampleDesc.Count   = desc.sampleCount == 0 ? 1 : desc.sampleCount;
     pso.SampleDesc.Quality = desc.sampleQuality;
 
-    const HRESULT hr = device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&m_pso));
+    HRESULT hr = device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&m_pso));
+    if (FAILED(hr) && desc.numRenderTargets == 1 && desc.inputLayout.size() == 2 && !desc.ps.Empty()) {
+        auto fallbackRootSignature = CreateBasicTextureRootSignature(device);
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC fallbackPso = pso;
+        fallbackPso.pRootSignature = fallbackRootSignature.Get();
+        hr = device->CreateGraphicsPipelineState(&fallbackPso, IID_PPV_ARGS(&m_pso));
+        if (SUCCEEDED(hr)) {
+            m_rootSig = std::move(fallbackRootSignature);
+            return;
+        }
+    }
     if (FAILED(hr)) {
         const std::string detail = DescribeGraphicsPipelineDesc(pso);
         ThrowIfFailed(hr, "device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&m_pso))", __FILE__, __LINE__, detail.c_str());
