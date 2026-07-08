@@ -67,6 +67,19 @@ UINT MakeCompileFlags() {
     return flags;
 }
 
+std::string NormalizeD3DCompileTarget(const std::string& target) {
+    // FXC can accept shader model 5.1, but some D3D12 runtime/driver combinations
+    // reject the resulting graphics PSO while the same shader compiled as 5.0 works.
+    // Keep DXC paths untouched; this normalization is for D3DCompile/FXC only.
+    if (target == "vs_5_1") return "vs_5_0";
+    if (target == "ps_5_1") return "ps_5_0";
+    if (target == "gs_5_1") return "gs_5_0";
+    if (target == "hs_5_1") return "hs_5_0";
+    if (target == "ds_5_1") return "ds_5_0";
+    if (target == "cs_5_1") return "cs_5_0";
+    return target;
+}
+
 std::vector<D3D_SHADER_MACRO> MakeD3DCompileMacros(const std::vector<ShaderMacro>& defines) {
     std::vector<D3D_SHADER_MACRO> macros;
     macros.reserve(defines.size() + 1);
@@ -149,6 +162,8 @@ ShaderBytecode CompileD3DCompileInternal(
     if (entryPoint.empty()) throw std::runtime_error("D3DCompile: empty entry point");
     if (target.empty()) throw std::runtime_error("D3DCompile: empty target");
 
+    const std::string normalizedTarget = NormalizeD3DCompileTarget(target);
+
     ComPtr<ID3DBlob> blob;
     ComPtr<ID3DBlob> errors;
     const HRESULT hr = D3DCompile(
@@ -158,7 +173,7 @@ ShaderBytecode CompileD3DCompileInternal(
         macros,
         includeHandler,
         entryPoint.c_str(),
-        target.c_str(),
+        normalizedTarget.c_str(),
         MakeCompileFlags(), 0,
         &blob, &errors);
 
