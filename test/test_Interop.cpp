@@ -2,6 +2,8 @@
 
 #include <D3D12Helper/D3D12Interop/D3D12Interop.hpp>
 
+#include <utility>
+
 using namespace D3D12CoreLib;
 
 TEST(Interop, SharedHandleRaii) {
