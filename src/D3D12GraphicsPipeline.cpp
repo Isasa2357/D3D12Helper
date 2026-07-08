@@ -44,6 +44,15 @@ D3D12_RENDER_TARGET_BLEND_DESC RtNoBlend() {
     b.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
     return b;
 }
+
+D3D12_DEPTH_STENCILOP_DESC StencilOpDisabled() {
+    D3D12_DEPTH_STENCILOP_DESC op = {};
+    op.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
+    op.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+    op.StencilPassOp      = D3D12_STENCIL_OP_KEEP;
+    op.StencilFunc        = D3D12_COMPARISON_FUNC_ALWAYS;
+    return op;
+}
 } // unnamed namespace
 
 D3D12_BLEND_DESC BlendOpaque() {
@@ -69,8 +78,14 @@ D3D12_BLEND_DESC BlendAlpha() {
 
 D3D12_DEPTH_STENCIL_DESC DepthDisabled() {
     D3D12_DEPTH_STENCIL_DESC d = {};
-    d.DepthEnable   = FALSE;
-    d.StencilEnable = FALSE;
+    d.DepthEnable    = FALSE;
+    d.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+    d.DepthFunc      = D3D12_COMPARISON_FUNC_LESS;
+    d.StencilEnable  = FALSE;
+    d.StencilReadMask  = D3D12_DEFAULT_STENCIL_READ_MASK;
+    d.StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK;
+    d.FrontFace = StencilOpDisabled();
+    d.BackFace  = StencilOpDisabled();
     return d;
 }
 
@@ -83,11 +98,8 @@ D3D12_DEPTH_STENCIL_DESC DepthDefault(bool depthWrite, D3D12_COMPARISON_FUNC dep
     d.StencilEnable  = FALSE;
     d.StencilReadMask  = D3D12_DEFAULT_STENCIL_READ_MASK;
     d.StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK;
-    const D3D12_DEPTH_STENCILOP_DESC op = {
-        D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP,
-        D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS };
-    d.FrontFace = op;
-    d.BackFace  = op;
+    d.FrontFace = StencilOpDisabled();
+    d.BackFace  = StencilOpDisabled();
     return d;
 }
 
