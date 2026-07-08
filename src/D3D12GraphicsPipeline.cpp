@@ -5,7 +5,9 @@
 #include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
 
 #include <climits>   // UINT_MAX
+#include <sstream>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 namespace D3D12CoreLib {
@@ -105,6 +107,41 @@ D3D12_DEPTH_STENCIL_DESC DepthDefault(bool depthWrite, D3D12_COMPARISON_FUNC dep
 
 } // namespace PipelineDefaults
 
+namespace {
+
+std::string DescribeGraphicsPipelineDesc(const D3D12_GRAPHICS_PIPELINE_STATE_DESC& pso) {
+    std::ostringstream oss;
+    oss << "D3D12GraphicsPipeline PSO desc:";
+    oss << " VS=" << pso.VS.BytecodeLength;
+    oss << " PS=" << pso.PS.BytecodeLength;
+    oss << " InputElements=" << pso.InputLayout.NumElements;
+    oss << " TopologyType=" << static_cast<int>(pso.PrimitiveTopologyType);
+    oss << " NumRTV=" << pso.NumRenderTargets;
+    oss << " RTV0=" << static_cast<int>(pso.RTVFormats[0]);
+    oss << " DSV=" << static_cast<int>(pso.DSVFormat);
+    oss << " SampleCount=" << pso.SampleDesc.Count;
+    oss << " SampleQuality=" << pso.SampleDesc.Quality;
+    oss << " SampleMask=" << pso.SampleMask;
+    oss << " BlendEnable=" << static_cast<int>(pso.BlendState.RenderTarget[0].BlendEnable);
+    oss << " SrcBlend=" << static_cast<int>(pso.BlendState.RenderTarget[0].SrcBlend);
+    oss << " DestBlend=" << static_cast<int>(pso.BlendState.RenderTarget[0].DestBlend);
+    oss << " SrcBlendAlpha=" << static_cast<int>(pso.BlendState.RenderTarget[0].SrcBlendAlpha);
+    oss << " DestBlendAlpha=" << static_cast<int>(pso.BlendState.RenderTarget[0].DestBlendAlpha);
+    oss << " WriteMask=" << static_cast<int>(pso.BlendState.RenderTarget[0].RenderTargetWriteMask);
+    oss << " CullMode=" << static_cast<int>(pso.RasterizerState.CullMode);
+    oss << " FillMode=" << static_cast<int>(pso.RasterizerState.FillMode);
+    oss << " DepthClip=" << static_cast<int>(pso.RasterizerState.DepthClipEnable);
+    oss << " DepthEnable=" << static_cast<int>(pso.DepthStencilState.DepthEnable);
+    oss << " DepthWriteMask=" << static_cast<int>(pso.DepthStencilState.DepthWriteMask);
+    oss << " DepthFunc=" << static_cast<int>(pso.DepthStencilState.DepthFunc);
+    oss << " StencilEnable=" << static_cast<int>(pso.DepthStencilState.StencilEnable);
+    oss << " StencilReadMask=" << static_cast<int>(pso.DepthStencilState.StencilReadMask);
+    oss << " StencilWriteMask=" << static_cast<int>(pso.DepthStencilState.StencilWriteMask);
+    return oss.str();
+}
+
+} // namespace
+
 void D3D12GraphicsPipeline::Initialize(
     ID3D12Device* device,
     ComPtr<ID3D12RootSignature> rootSignature,
@@ -152,8 +189,11 @@ void D3D12GraphicsPipeline::Initialize(
     pso.SampleDesc.Count   = desc.sampleCount == 0 ? 1 : desc.sampleCount;
     pso.SampleDesc.Quality = desc.sampleQuality;
 
-    D3D12CORE_THROW_IF_FAILED(
-        device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&m_pso)));
+    const HRESULT hr = device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&m_pso));
+    if (FAILED(hr)) {
+        const std::string detail = DescribeGraphicsPipelineDesc(pso);
+        ThrowIfFailed(hr, "device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&m_pso))", __FILE__, __LINE__, detail.c_str());
+    }
 }
 
 void D3D12GraphicsPipeline::InitializeRaw(
@@ -170,8 +210,11 @@ void D3D12GraphicsPipeline::InitializeRaw(
     D3D12_GRAPHICS_PIPELINE_STATE_DESC copy = psoDesc;
     copy.pRootSignature = m_rootSig.Get();
 
-    D3D12CORE_THROW_IF_FAILED(
-        device->CreateGraphicsPipelineState(&copy, IID_PPV_ARGS(&m_pso)));
+    const HRESULT hr = device->CreateGraphicsPipelineState(&copy, IID_PPV_ARGS(&m_pso));
+    if (FAILED(hr)) {
+        const std::string detail = DescribeGraphicsPipelineDesc(copy);
+        ThrowIfFailed(hr, "device->CreateGraphicsPipelineState(&copy, IID_PPV_ARGS(&m_pso))", __FILE__, __LINE__, detail.c_str());
+    }
 }
 
 void D3D12GraphicsPipeline::Bind(D3D12CommandContext& ctx) const {
