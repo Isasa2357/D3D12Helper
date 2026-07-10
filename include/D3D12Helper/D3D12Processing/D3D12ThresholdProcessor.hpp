@@ -33,12 +33,26 @@ public:
         const ThresholdDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
 
+    void RecordThresholdView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        const ThresholdDesc& desc,
+        const D3D12ProcessingStateDesc& state);
+
     void RecordRangeThreshold(
         D3D12CommandContext& commandContext,
         D3D12Resource& src,
         D3D12Resource& dst,
         const RangeThresholdDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
+
+    void RecordRangeThresholdView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        const RangeThresholdDesc& desc,
+        const D3D12ProcessingStateDesc& state);
 
     void RecordConfidenceHeatmap(
         D3D12CommandContext& commandContext,
@@ -47,6 +61,13 @@ public:
         const ConfidenceHeatmapDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
 
+    void RecordConfidenceHeatmapView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        const ConfidenceHeatmapDesc& desc,
+        const D3D12ProcessingStateDesc& state);
+
     void RecordClassColorMap(
         D3D12CommandContext& commandContext,
         D3D12Resource& src,
@@ -54,12 +75,26 @@ public:
         const ClassColorMapDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
 
+    void RecordClassColorMapView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        const ClassColorMapDesc& desc,
+        const D3D12ProcessingStateDesc& state);
+
     void RecordMaskOverlay(
         D3D12CommandContext& commandContext,
         D3D12Resource& mask,
         D3D12Resource& dst,
         const MaskOverlayDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
+
+    void RecordMaskOverlayView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView mask,
+        D3D12ResourceView dst,
+        const MaskOverlayDesc& desc,
+        const D3D12ProcessingStateDesc& state);
 
     D3D12Resource CreateOutputTexture(
         D3D12Core& core,
