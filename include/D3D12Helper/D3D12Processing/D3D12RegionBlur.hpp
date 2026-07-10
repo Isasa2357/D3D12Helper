@@ -54,6 +54,17 @@ public:
         const RegionBlurDesc& desc,
         const D3D12ProcessingRegionBlurStateDesc& state = {});
 
+    // Non-owning entry point. Explicit states are mandatory and all four resources
+    // must remain alive through GPU completion and must be mutually distinct.
+    void RecordRegionBlurView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView blurScratch,
+        D3D12ResourceView blurred,
+        D3D12ResourceView dst,
+        const RegionBlurDesc& desc,
+        const D3D12ProcessingRegionBlurStateDesc& state);
+
     D3D12Resource CreateOutputTexture(
         D3D12Core& core,
         UINT width,
