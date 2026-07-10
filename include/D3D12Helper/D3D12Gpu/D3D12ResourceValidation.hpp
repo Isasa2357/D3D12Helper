@@ -39,6 +39,8 @@ struct D3D12ValidationResult {
 
     bool IsValid() const noexcept { return issues.empty(); }
     explicit operator bool() const noexcept { return IsValid(); }
+
+    // Joins all issue messages in validation order. Empty when valid.
     std::string Message() const;
 };
 
@@ -53,10 +55,12 @@ struct D3D12Texture2DRequirement {
     D3D12_RESOURCE_FLAGS requiredFlags = D3D12_RESOURCE_FLAG_NONE;
     D3D12_RESOURCE_FLAGS forbiddenFlags = D3D12_RESOURCE_FLAG_NONE;
 
-    // nullptr disables device identity validation. This pointer is borrowed.
+    // nullptr disables device identity validation. This pointer is borrowed and
+    // must remain valid for the duration of ValidateTexture2D().
     ID3D12Device* expectedDevice = nullptr;
 
-    // 1 disables the corresponding divisibility constraint.
+    // 1 disables the corresponding divisibility constraint. Zero is an invalid
+    // requirement and is reported through D3D12ValidationResult.
     UINT64 widthMultiple = 1;
     UINT heightMultiple = 1;
 };
