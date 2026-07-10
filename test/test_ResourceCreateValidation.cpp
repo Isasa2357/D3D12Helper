@@ -30,18 +30,26 @@ TEST(ResourceCreateValidation, CreatesDetailedDefaultBuffer) {
     D3D12BufferCreateDesc desc;
     desc.sizeBytes = 4096;
     desc.alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-    desc.heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
     desc.resourceFlags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     desc.initialState = D3D12_RESOURCE_STATE_COMMON;
 
     D3D12Resource buffer = CreateBufferDetailed(*core, desc);
     CHECK(buffer.Get() != nullptr);
-    CHECK(buffer.GetDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER);
-    CHECK_EQ(buffer.GetDesc().Width, 4096ull);
-    CHECK_EQ(buffer.GetDesc().Alignment,
-             static_cast<UINT64>(D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT));
-    CHECK((buffer.GetDesc().Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) != 0);
+
+    const D3D12_RESOURCE_DESC actual = buffer.GetDesc();
+    CHECK(actual.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER);
+    CHECK_EQ(actual.Width, 4096ull);
+    CHECK(actual.Alignment == 0 ||
+          actual.Alignment == static_cast<UINT64>(D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT));
+    CHECK((actual.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) != 0);
     CHECK(buffer.GetState() == D3D12_RESOURCE_STATE_COMMON);
+
+    // Alignment == 0 is defined as the standard 64 KiB buffer placement
+    // alignment, so allocation info is the authoritative effective value.
+    const D3D12_RESOURCE_ALLOCATION_INFO allocationInfo =
+        core->GetDevice()->GetResourceAllocationInfo(0, 1, &actual);
+    CHECK_EQ(allocationInfo.Alignment,
+             static_cast<UINT64>(D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT));
 
     D3D12_HEAP_PROPERTIES heapProperties = {};
     D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_NONE;
@@ -49,7 +57,6 @@ TEST(ResourceCreateValidation, CreatesDetailedDefaultBuffer) {
     CHECK(heapProperties.Type == D3D12_HEAP_TYPE_DEFAULT);
     CHECK_EQ(heapProperties.CreationNodeMask, 1u);
     CHECK_EQ(heapProperties.VisibleNodeMask, 1u);
-    CHECK(heapFlags == D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS);
 }
 
 TEST(ResourceCreateValidation, CreatesUploadAndReadbackBuffers) {
@@ -87,6 +94,25 @@ TEST(ResourceCreateValidation, CreatesUploadAndReadbackBuffers) {
     invalidNodeMask.creationNodeMask = 1;
     invalidNodeMask.visibleNodeMask = 2;
     CHECK_THROWS(CreateBufferDetailed(*core, invalidNodeMask));
+}
+
+TEST(ResourceCreateValidation, RejectsImplicitClassificationHeapFlags) {
+    REQUIRE_CORE(core);
+
+    // CreateCommittedResource owns an implicit heap. DENY_* flags and their
+    // ALLOW_ONLY_* aliases are selected by the runtime and are not valid input
+    // for this committed-resource helper.
+    D3D12BufferCreateDesc bufferDesc;
+    bufferDesc.sizeBytes = 256;
+    bufferDesc.heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+    CHECK_THROWS(CreateBufferDetailed(*core, bufferDesc));
+
+    D3D12Texture2DCreateDesc textureDesc;
+    textureDesc.width = 16;
+    textureDesc.height = 16;
+    textureDesc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    textureDesc.heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+    CHECK_THROWS(CreateTexture2DDetailed(*core, textureDesc));
 }
 
 TEST(ResourceCreateValidation, CreatesDetailedTexture2D) {
