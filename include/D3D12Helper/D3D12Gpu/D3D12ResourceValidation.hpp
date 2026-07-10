@@ -4,6 +4,7 @@
 // Usage-independent validation for externally supplied D3D12 resources.
 //
 #include <D3D12Helper/D3D12Core/D3D12Common.hpp>
+#include <D3D12Helper/D3D12Gpu/D3D12ResourceView.hpp>
 
 #include <optional>
 #include <string>
@@ -56,7 +57,7 @@ struct D3D12Texture2DRequirement {
     D3D12_RESOURCE_FLAGS forbiddenFlags = D3D12_RESOURCE_FLAG_NONE;
 
     // nullptr disables device identity validation. This pointer is borrowed and
-    // must remain valid for the duration of ValidateTexture2D().
+    // must remain valid for the duration of validation.
     ID3D12Device* expectedDevice = nullptr;
 
     // 1 disables the corresponding divisibility constraint. Zero is an invalid
@@ -65,12 +66,23 @@ struct D3D12Texture2DRequirement {
     UINT heightMultiple = 1;
 };
 
+// Existing raw-pointer API added in Phase 1.
 D3D12ValidationResult ValidateTexture2D(
     ID3D12Resource* resource,
     const D3D12Texture2DRequirement& requirement);
 
 void ValidateTexture2DOrThrow(
     ID3D12Resource* resource,
+    const D3D12Texture2DRequirement& requirement);
+
+// Distinct names avoid introducing overload ambiguity into the Phase 1 API.
+// The view remains non-owning for the complete validation call.
+D3D12ValidationResult ValidateTexture2DView(
+    D3D12ResourceView resource,
+    const D3D12Texture2DRequirement& requirement);
+
+void ValidateTexture2DViewOrThrow(
+    D3D12ResourceView resource,
     const D3D12Texture2DRequirement& requirement);
 
 } // namespace D3D12CoreLib

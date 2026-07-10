@@ -8,6 +8,7 @@
 #include <D3D12Helper/D3D12Processing/D3D12TextureViews.hpp>
 #include <D3D12Helper/D3D12Core/D3D12CommandContext.hpp>
 #include <D3D12Helper/D3D12Framework/D3D12ComputePipeline.hpp>
+#include <D3D12Helper/D3D12Gpu/D3D12ResourceView.hpp>
 
 #include <memory>
 
@@ -32,6 +33,15 @@ public:
         D3D12Resource& dst,
         const ColorAdjustDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
+
+    // Non-owning path. The caller must provide explicit before/after states and
+    // keep both resources alive until the submitted GPU work completes.
+    void RecordColorAdjustView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        const ColorAdjustDesc& desc,
+        const D3D12ProcessingStateDesc& state);
 
     D3D12Resource CreateOutputTexture(
         D3D12Core& core,

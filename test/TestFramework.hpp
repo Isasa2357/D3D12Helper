@@ -120,7 +120,9 @@ inline int RunAll(const char* suiteFilter) {
             &D3D12TEST_CONCAT(test_##suite##_##name##_, __LINE__));                \
     static void D3D12TEST_CONCAT(test_##suite##_##name##_, __LINE__)()
 
-#define CHECK(cond)          ::d3d12test::DoCheck((cond), #cond, __FILE__, __LINE__)
+// static_cast<bool> allows wrappers with explicit operator bool() to be tested
+// without weakening their production API to an implicit conversion.
+#define CHECK(cond)          ::d3d12test::DoCheck(static_cast<bool>(cond), #cond, __FILE__, __LINE__)
 #define CHECK_EQ(a, b)       ::d3d12test::DoCheckEq((a), (b), #a, #b, __FILE__, __LINE__)
 #define CHECK_NEAR(a, b, e)  ::d3d12test::DoCheckNear((a), (b), (e), #a, #b, __FILE__, __LINE__)
 #define CHECK_THROWS(expr)                                                        \

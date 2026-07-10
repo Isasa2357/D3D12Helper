@@ -23,6 +23,40 @@ struct D3D12PyramidRegionBlurWorkspace {
     D3D12Resource blurred;
 };
 
+struct D3D12PyramidRegionBlurWorkspaceView {
+    UINT sourceWidth = 0;
+    UINT sourceHeight = 0;
+    UINT levels = 0;
+    DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+
+    D3D12PyramidBlurWorkspaceView blurWorkspace;
+    D3D12ResourceView blurred;
+
+    D3D12PyramidRegionBlurWorkspaceView() = default;
+
+    explicit D3D12PyramidRegionBlurWorkspaceView(
+        const D3D12PyramidRegionBlurWorkspace& workspace)
+        : sourceWidth(workspace.sourceWidth),
+          sourceHeight(workspace.sourceHeight),
+          levels(workspace.levels),
+          format(workspace.format),
+          blurWorkspace(workspace.blurWorkspace),
+          blurred(workspace.blurred) {}
+};
+
+struct D3D12PyramidRegionBlurStateDesc {
+    D3D12_RESOURCE_STATES srcBefore = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES srcAfter = D3D12_RESOURCE_STATE_COMMON;
+
+    D3D12PyramidBlurWorkspaceStateDesc blurWorkspace;
+    D3D12_RESOURCE_STATES blurredBefore = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES blurredAfter = D3D12_RESOURCE_STATE_COMMON;
+
+    D3D12_RESOURCE_STATES dstBefore = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES dstAfter = D3D12_RESOURCE_STATE_COMMON;
+    bool useExplicitStates = false;
+};
+
 class D3D12PyramidRegionBlur {
 public:
     D3D12PyramidRegionBlur();
@@ -56,6 +90,14 @@ public:
         D3D12PyramidRegionBlurWorkspace& workspace,
         D3D12Resource& dst,
         const PyramidRegionBlurDesc& desc);
+
+    void RecordPyramidRegionBlurView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        const D3D12PyramidRegionBlurWorkspaceView& workspace,
+        D3D12ResourceView dst,
+        const PyramidRegionBlurDesc& desc,
+        const D3D12PyramidRegionBlurStateDesc& state);
 
 private:
     struct Pipelines;

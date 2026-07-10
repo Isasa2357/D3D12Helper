@@ -8,6 +8,7 @@
 #include <D3D12Helper/D3D12Processing/D3D12TextureViews.hpp>
 #include <D3D12Helper/D3D12Core/D3D12CommandContext.hpp>
 #include <D3D12Helper/D3D12Framework/D3D12ComputePipeline.hpp>
+#include <D3D12Helper/D3D12Gpu/D3D12ResourceView.hpp>
 
 #include <memory>
 
@@ -35,6 +36,15 @@ public:
         const FusedConvertResizeDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
 
+    // Non-owning counterpart. state.useExplicitStates must be true and both
+    // resource owners must keep their resources alive through GPU completion.
+    void RecordConvertResizeView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        const FusedConvertResizeDesc& desc,
+        const D3D12ProcessingStateDesc& state);
+
     D3D12Resource CreateOutputTexture(
         D3D12Core& core,
         UINT width,
@@ -48,19 +58,35 @@ private:
     void EnsureInitialized() const;
     void EnsurePipelines();
 
-    void RecordRgbToRgbResize(
+    void RecordConvertResizeImpl(
         D3D12CommandContext& commandContext,
-        D3D12Resource& src,
-        D3D12Resource& dst,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        D3D12Resource* trackedSrc,
+        D3D12Resource* trackedDst,
         const FusedConvertResizeDesc& desc,
-        const D3D12ProcessingStateDesc& state);
+        const D3D12ProcessingStateDesc& state,
+        const char* functionName);
 
-    void RecordYuv420ToRgbResize(
+    void RecordRgbToRgbResizeImpl(
         D3D12CommandContext& commandContext,
-        D3D12Resource& src,
-        D3D12Resource& dst,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        D3D12Resource* trackedSrc,
+        D3D12Resource* trackedDst,
         const FusedConvertResizeDesc& desc,
-        const D3D12ProcessingStateDesc& state);
+        const D3D12ProcessingStateDesc& state,
+        const char* functionName);
+
+    void RecordYuv420ToRgbResizeImpl(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        D3D12Resource* trackedSrc,
+        D3D12Resource* trackedDst,
+        const FusedConvertResizeDesc& desc,
+        const D3D12ProcessingStateDesc& state,
+        const char* functionName);
 
     D3D12ProcessingContext* m_context = nullptr;
     D3D12ProcessingShaderCache m_shaderCache;

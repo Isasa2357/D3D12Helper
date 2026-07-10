@@ -6,6 +6,7 @@
 #include <D3D12Helper/D3D12Gpu/D3D12Resolve.hpp>
 #include <D3D12Helper/D3D12Gpu/D3D12ResourceCreate.hpp>
 #include <D3D12Helper/D3D12Gpu/D3D12ResourceValidation.hpp>
+#include <D3D12Helper/D3D12Gpu/D3D12ResourceView.hpp>
 #include <D3D12Helper/D3D12Gpu/D3D12ShaderReflection.hpp>
 #include <D3D12Helper/D3D12Gpu/D3D12State.hpp>
 #include <D3D12Helper/D3D12Gpu/D3D12TextureTransfer.hpp>

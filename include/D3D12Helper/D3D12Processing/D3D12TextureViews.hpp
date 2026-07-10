@@ -6,6 +6,7 @@
 #include <D3D12Helper/D3D12Processing/D3D12ProcessingContext.hpp>
 #include <D3D12Helper/D3D12Framework/D3D12Helpers.hpp>
 #include <D3D12Helper/D3D12Framework/D3D12Resource.hpp>
+#include <D3D12Helper/D3D12Gpu/D3D12ResourceView.hpp>
 
 namespace D3D12CoreLib {
 namespace Processing {
@@ -38,6 +39,15 @@ D3D12TextureViewSet CreateRgbaTextureViewSet(
     bool createUav,
     DXGI_FORMAT viewFormat = DXGI_FORMAT_UNKNOWN);
 
+// Non-owning counterpart. The resource must outlive descriptor creation and all
+// GPU work that uses the resulting descriptors.
+D3D12TextureViewSet CreateRgbaTextureViewSetFromView(
+    D3D12ProcessingContext& context,
+    D3D12ResourceView texture,
+    bool createSrv,
+    bool createUav,
+    DXGI_FORMAT viewFormat = DXGI_FORMAT_UNKNOWN);
+
 // NV12 専用の互換 API。
 D3D12TextureViewSet CreateNv12SrvViewSet(
     D3D12ProcessingContext& context,
@@ -65,6 +75,20 @@ D3D12TextureViewSet CreateYuv420UavViewSet(
 D3D12TextureViewSet CreateYuv420SrvUavViewSet(
     D3D12ProcessingContext& context,
     const D3D12Resource& texture,
+    bool createSrv,
+    bool createUav);
+
+D3D12TextureViewSet CreateYuv420SrvViewSetFromView(
+    D3D12ProcessingContext& context,
+    D3D12ResourceView texture);
+
+D3D12TextureViewSet CreateYuv420UavViewSetFromView(
+    D3D12ProcessingContext& context,
+    D3D12ResourceView texture);
+
+D3D12TextureViewSet CreateYuv420SrvUavViewSetFromView(
+    D3D12ProcessingContext& context,
+    D3D12ResourceView texture,
     bool createSrv,
     bool createUav);
 

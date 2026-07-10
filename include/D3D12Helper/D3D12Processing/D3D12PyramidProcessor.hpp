@@ -33,12 +33,26 @@ public:
         const PyramidDownsampleDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
 
+    void RecordDownsample2xView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        const PyramidDownsampleDesc& desc,
+        const D3D12ProcessingStateDesc& state);
+
     void RecordUpsample2x(
         D3D12CommandContext& commandContext,
         D3D12Resource& src,
         D3D12Resource& dst,
         const PyramidUpsampleDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
+
+    void RecordUpsample2xView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        const PyramidUpsampleDesc& desc,
+        const D3D12ProcessingStateDesc& state);
 
     D3D12Resource CreateOutputTexture(
         D3D12Core& core,

@@ -7,10 +7,13 @@
 #include <D3D12Helper/D3D12Core/D3D12Queue.hpp>
 #include <D3D12Helper/D3D12Framework/D3D12Helpers.hpp>
 #include <D3D12Helper/D3D12Framework/D3D12ReadbackBuffer.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12FormatConverter.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12FusedPipeline.hpp>
 
 #include <type_traits>
 
 using namespace D3D12CoreLib;
+using namespace D3D12CoreLib::Processing;
 
 namespace {
 
@@ -42,6 +45,20 @@ using CreateTexture2DSignature = D3D12Resource (*)(
     UINT16,
     D3D12_HEAP_FLAGS);
 
+using RecordConvertSignature = void (D3D12FormatConverter::*)(
+    D3D12CommandContext&,
+    D3D12Resource&,
+    D3D12Resource&,
+    const FormatConvertDesc&,
+    const D3D12ProcessingStateDesc&);
+
+using RecordConvertResizeSignature = void (D3D12FusedProcessor::*)(
+    D3D12CommandContext&,
+    D3D12Resource&,
+    D3D12Resource&,
+    const FusedConvertResizeDesc&,
+    const D3D12ProcessingStateDesc&);
+
 static_assert(std::is_same_v<decltype(&D3D12Queue::Signal), QueueSignalSignature>);
 static_assert(std::is_same_v<decltype(&D3D12Queue::WaitForFenceValue), QueueWaitForFenceSignature>);
 static_assert(std::is_same_v<decltype(&D3D12Queue::WaitIdle), QueueWaitIdleSignature>);
@@ -53,6 +70,8 @@ static_assert(std::is_same_v<decltype(&D3D12ReadbackBuffer::Unmap), ReadbackUnma
 
 static_assert(std::is_same_v<decltype(&CreateBuffer), CreateBufferSignature>);
 static_assert(std::is_same_v<decltype(&CreateTexture2D), CreateTexture2DSignature>);
+static_assert(std::is_same_v<decltype(&D3D12FormatConverter::RecordConvert), RecordConvertSignature>);
+static_assert(std::is_same_v<decltype(&D3D12FusedProcessor::RecordConvertResize), RecordConvertResizeSignature>);
 
 static_assert(!std::is_copy_constructible_v<D3D12ReadbackBuffer>);
 static_assert(!std::is_copy_assignable_v<D3D12ReadbackBuffer>);
@@ -68,6 +87,8 @@ TEST(CompatibilityV1121, PublicSignaturesCompile) {
     ReadbackUnmapSignature unmap = &D3D12ReadbackBuffer::Unmap;
     CreateBufferSignature createBuffer = &CreateBuffer;
     CreateTexture2DSignature createTexture2D = &CreateTexture2D;
+    RecordConvertSignature recordConvert = &D3D12FormatConverter::RecordConvert;
+    RecordConvertResizeSignature recordConvertResize = &D3D12FusedProcessor::RecordConvertResize;
 
     CHECK(signal != nullptr);
     CHECK(gpuWait != nullptr);
@@ -75,4 +96,6 @@ TEST(CompatibilityV1121, PublicSignaturesCompile) {
     CHECK(unmap != nullptr);
     CHECK(createBuffer != nullptr);
     CHECK(createTexture2D != nullptr);
+    CHECK(recordConvert != nullptr);
+    CHECK(recordConvertResize != nullptr);
 }

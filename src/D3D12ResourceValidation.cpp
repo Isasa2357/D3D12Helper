@@ -45,18 +45,7 @@ std::string FlagsHex(D3D12_RESOURCE_FLAGS flags) {
     return os.str();
 }
 
-} // namespace
-
-std::string D3D12ValidationResult::Message() const {
-    std::ostringstream os;
-    for (size_t i = 0; i < issues.size(); ++i) {
-        if (i != 0) os << "; ";
-        os << issues[i].message;
-    }
-    return os.str();
-}
-
-D3D12ValidationResult ValidateTexture2D(
+D3D12ValidationResult ValidateTexture2DImpl(
     ID3D12Resource* resource,
     const D3D12Texture2DRequirement& requirement) {
 
@@ -163,14 +152,51 @@ D3D12ValidationResult ValidateTexture2D(
     return result;
 }
 
+void ThrowIfInvalid(
+    const char* functionName,
+    const D3D12ValidationResult& result) {
+    if (!result.IsValid()) {
+        throw std::runtime_error(std::string(functionName) + ": " + result.Message());
+    }
+}
+
+} // namespace
+
+std::string D3D12ValidationResult::Message() const {
+    std::ostringstream os;
+    for (size_t i = 0; i < issues.size(); ++i) {
+        if (i != 0) os << "; ";
+        os << issues[i].message;
+    }
+    return os.str();
+}
+
+D3D12ValidationResult ValidateTexture2D(
+    ID3D12Resource* resource,
+    const D3D12Texture2DRequirement& requirement) {
+    return ValidateTexture2DImpl(resource, requirement);
+}
+
 void ValidateTexture2DOrThrow(
     ID3D12Resource* resource,
     const D3D12Texture2DRequirement& requirement) {
+    ThrowIfInvalid(
+        "ValidateTexture2DOrThrow",
+        ValidateTexture2DImpl(resource, requirement));
+}
 
-    const D3D12ValidationResult result = ValidateTexture2D(resource, requirement);
-    if (!result.IsValid()) {
-        throw std::runtime_error("ValidateTexture2DOrThrow: " + result.Message());
-    }
+D3D12ValidationResult ValidateTexture2DView(
+    D3D12ResourceView resource,
+    const D3D12Texture2DRequirement& requirement) {
+    return ValidateTexture2DImpl(resource.Get(), requirement);
+}
+
+void ValidateTexture2DViewOrThrow(
+    D3D12ResourceView resource,
+    const D3D12Texture2DRequirement& requirement) {
+    ThrowIfInvalid(
+        "ValidateTexture2DViewOrThrow",
+        ValidateTexture2DImpl(resource.Get(), requirement));
 }
 
 } // namespace D3D12CoreLib

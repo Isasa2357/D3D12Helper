@@ -120,6 +120,7 @@ set(D3D12HELPER_TEST_SUITES
     DescriptorAllocator
     Resource
     ResourceCreateValidation
+    ResourceView
     Helpers
     UploadReadback
     Transfer

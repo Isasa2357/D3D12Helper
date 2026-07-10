@@ -8,6 +8,7 @@
 #include <D3D12Helper/D3D12Processing/D3D12TextureViews.hpp>
 #include <D3D12Helper/D3D12Core/D3D12CommandContext.hpp>
 #include <D3D12Helper/D3D12Framework/D3D12ComputePipeline.hpp>
+#include <D3D12Helper/D3D12Gpu/D3D12ResourceView.hpp>
 
 #include <memory>
 
@@ -32,6 +33,16 @@ public:
         D3D12Resource& dst,
         const ResizeDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
+
+    // Non-owning counterpart for externally owned resources. Explicit before /
+    // after states are mandatory and the resources must remain alive until the
+    // submitted GPU work has completed.
+    void RecordResizeView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        const ResizeDesc& desc,
+        const D3D12ProcessingStateDesc& state);
 
     D3D12Resource CreateOutputTexture(
         D3D12Core& core,
