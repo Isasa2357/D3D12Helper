@@ -36,6 +36,16 @@ public:
         const BlurDesc& desc,
         const D3D12ProcessingBlurStateDesc& state = {});
 
+    // Non-owning entry point. All resources must outlive submitted GPU work.
+    // Explicit before/after states are mandatory and all three resources must be distinct.
+    void RecordBlurView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView scratch,
+        D3D12ResourceView dst,
+        const BlurDesc& desc,
+        const D3D12ProcessingBlurStateDesc& state);
+
     D3D12Resource CreateOutputTexture(
         D3D12Core& core,
         UINT width,
