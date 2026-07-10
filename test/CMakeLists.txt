@@ -119,6 +119,7 @@ set(D3D12HELPER_TEST_SUITES
     CommandContext
     DescriptorAllocator
     Resource
+    ResourceCreateValidation
     Helpers
     UploadReadback
     Transfer
