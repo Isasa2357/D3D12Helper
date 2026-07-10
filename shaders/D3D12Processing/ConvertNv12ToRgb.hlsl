@@ -1,5 +1,5 @@
 #include "ProcessingCommon.hlsli"
-#include "ColorSpace.hlsli"
+#include "YuvPrimitives.hlsli"
 
 Texture2D<float> YPlane : register(t0);
 Texture2D<float2> UVPlane : register(t1);
@@ -13,10 +13,14 @@ void main(uint3 tid : SV_DispatchThreadID)
         return;
     }
 
-    uint2 srcPos = OffsetPosition(SrcX, SrcY, p);
-    uint2 dstPos = OffsetPosition(DstX, DstY, p);
-    float y = YPlane.Load(LoadCoord(srcPos));
-    float2 uv = UVPlane.Load(LoadCoord(srcPos / 2));
-    float3 rgb = DecodeYuv(y, uv, SrcRange, SrcMatrix);
-    Dst[dstPos] = FromLogicalRgba(float4(rgb, 1.0), DstFormat);
+    const uint2 srcPos = OffsetPosition(SrcX, SrcY, p);
+    const uint2 dstPos = OffsetPosition(DstX, DstY, p);
+    const float3 rgb = D3D12LoadYuv420Rgb(
+        YPlane,
+        UVPlane,
+        srcPos,
+        SrcFormat,
+        SrcRange,
+        SrcMatrix);
+    Dst[dstPos] = FromLogicalRgba(float4(rgb, 1.0f), DstFormat);
 }
