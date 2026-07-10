@@ -21,6 +21,8 @@ struct D3D12BufferCreateDesc {
     UINT creationNodeMask = 1;
     UINT visibleNodeMask = 1;
 
+    // For committed resources, DENY_* flags and their ALLOW_ONLY_* aliases are
+    // selected automatically for the implicit heap and are rejected here.
     D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_NONE;
     D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
     D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
@@ -42,6 +44,8 @@ struct D3D12Texture2DCreateDesc {
     UINT creationNodeMask = 1;
     UINT visibleNodeMask = 1;
 
+    // For committed resources, DENY_* flags and their ALLOW_ONLY_* aliases are
+    // selected automatically for the implicit heap and are rejected here.
     D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_NONE;
     D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
     D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
