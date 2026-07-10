@@ -42,6 +42,27 @@ void ValidateHeapInitialState(
     }
 }
 
+void ValidateCommittedResourceHeapFlags(
+    D3D12_HEAP_FLAGS heapFlags,
+    const char* functionName) {
+
+    // These resource-classification flags are for explicit heaps. The runtime
+    // selects them automatically for the implicit heap created by
+    // CreateCommittedResource. Passing an ALLOW_ONLY_* alias therefore also
+    // reaches this mask and is rejected before the D3D call.
+    constexpr UINT implicitClassificationMask =
+        static_cast<UINT>(D3D12_HEAP_FLAG_DENY_BUFFERS) |
+        static_cast<UINT>(D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES) |
+        static_cast<UINT>(D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES);
+
+    if ((static_cast<UINT>(heapFlags) & implicitClassificationMask) != 0u) {
+        throw std::runtime_error(std::string(functionName) +
+            ": DENY_* and ALLOW_ONLY_* resource-classification heap flags "
+            "must not be passed to CreateCommittedResource; the runtime sets "
+            "them automatically for the implicit heap");
+    }
+}
+
 D3D12_HEAP_PROPERTIES MakeHeapProperties(
     D3D12_HEAP_TYPE heapType,
     D3D12_CPU_PAGE_PROPERTY cpuPageProperty,
@@ -69,6 +90,7 @@ D3D12Resource CreateBufferDetailed(
     }
     ValidateNodeMasks(desc.creationNodeMask, desc.visibleNodeMask, "CreateBufferDetailed");
     ValidateHeapInitialState(desc.heapType, desc.initialState, "CreateBufferDetailed");
+    ValidateCommittedResourceHeapFlags(desc.heapFlags, "CreateBufferDetailed");
 
     D3D12_RESOURCE_DESC resourceDesc = {};
     resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -131,6 +153,9 @@ D3D12Resource CreateTexture2DDetailed(
     ValidateHeapInitialState(
         desc.heapType,
         desc.initialState,
+        "CreateTexture2DDetailed");
+    ValidateCommittedResourceHeapFlags(
+        desc.heapFlags,
         "CreateTexture2DDetailed");
 
     D3D12_RESOURCE_DESC resourceDesc = {};
