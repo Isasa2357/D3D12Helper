@@ -25,3 +25,39 @@ TEST(Fence, WaitIdleFlushes) {
     q.WaitIdle();
     CHECK(q.Fence().GetCompletedValue() >= before);
 }
+
+TEST(Fence, SyncPointSignalsAndCpuWaits) {
+    REQUIRE_CORE(core);
+    D3D12Queue& q = core->DirectQueue();
+
+    D3D12QueueSyncPoint point = q.SignalPoint();
+    CHECK(point.IsValid());
+    CHECK(point.GetFence() != nullptr);
+    CHECK(point.GetValue() != 0);
+
+    q.CpuWait(point);
+    CHECK(point.GetFence()->GetCompletedValue() >= point.GetValue());
+}
+
+TEST(Fence, SyncPointCrossQueueGpuWait) {
+    REQUIRE_CORE(core);
+
+    D3D12Queue& producer = core->DirectQueue();
+    D3D12Queue& consumer = core->CopyQueue();
+
+    const D3D12QueueSyncPoint produced = producer.SignalPoint();
+    consumer.GpuWait(produced);
+
+    const D3D12QueueSyncPoint consumed = consumer.SignalPoint();
+    consumer.CpuWait(consumed);
+
+    CHECK(consumed.GetFence()->GetCompletedValue() >= consumed.GetValue());
+}
+
+TEST(Fence, SyncPointRejectsInvalidValue) {
+    REQUIRE_CORE(core);
+    D3D12QueueSyncPoint invalid;
+
+    CHECK_THROWS(core->DirectQueue().GpuWait(invalid));
+    CHECK_THROWS(core->DirectQueue().CpuWait(invalid));
+}
