@@ -52,6 +52,8 @@ Signal 済み Fence と値をまとめる値型です。
 
 指定可能な主な項目は、alignment、heap type、CPU page property、memory pool、node mask、heap flags、resource flags、initial state、Texture2D の sample/layout/clear value です。
 
+`CreateBufferDetailed()` と `CreateTexture2DDetailed()` は committed resource 専用です。`CreateCommittedResource` が作る implicit heap では、`D3D12_HEAP_FLAG_DENY_*` と、それらの組合せである `D3D12_HEAP_FLAG_ALLOW_ONLY_*` は runtime が自動設定します。このため、これらの resource-classification flag が descriptor に指定された場合は、D3D12 呼び出し前に明確な例外として拒否します。共有、residency、zeroing など、committed resource に対して有効なその他の heap flag はそのまま渡します。
+
 v1.12.1 の `CreateBuffer(...)` と `CreateTexture2D(...)` には同名 overload を追加しません。`&CreateBuffer` と `&CreateTexture2D` を取得する既存コードの一意性を維持するため、詳細版には別名を使用します。既存簡易 API の実装と挙動は変更しません。
 
 ### Resource 検証 Utility
