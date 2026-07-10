@@ -4,6 +4,7 @@
 #include <D3D12Helper/D3D12Framework/D3D12Helpers.hpp>
 
 #include <sstream>
+#include <string>
 
 namespace D3D12CoreLib {
 namespace Processing {
@@ -40,11 +41,15 @@ UINT DivideRoundUp(UINT value, UINT divisor) noexcept {
     return (value + divisor - 1u) / divisor;
 }
 
-DXGI_FORMAT ResolveFormat(DXGI_FORMAT requested, const D3D12Resource& resource) {
+DXGI_FORMAT ResolveFormat(DXGI_FORMAT requested, D3D12ResourceView resource) {
     return requested == DXGI_FORMAT_UNKNOWN ? resource.GetFormat() : requested;
 }
 
-void ValidateTexture2D(const D3D12Resource& resource, const char* functionName, const char* argumentName) {
+void ValidateTexture2D(
+    D3D12ResourceView resource,
+    const char* functionName,
+    const char* argumentName) {
+
     if (!resource.Get()) {
         std::ostringstream os;
         os << functionName << ": " << argumentName << " is null";
@@ -63,7 +68,7 @@ void ValidateTexture2D(const D3D12Resource& resource, const char* functionName, 
     }
 }
 
-void ValidateOutputUav(const D3D12Resource& resource, const char* functionName) {
+void ValidateOutputUav(D3D12ResourceView resource, const char* functionName) {
     const auto desc = resource.GetDesc();
     if ((desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) == 0) {
         std::ostringstream os;
@@ -72,7 +77,11 @@ void ValidateOutputUav(const D3D12Resource& resource, const char* functionName) 
     }
 }
 
-void ValidateOutputFormatCaps(D3D12ProcessingContext& context, DXGI_FORMAT format, const char* functionName) {
+void ValidateOutputFormatCaps(
+    D3D12ProcessingContext& context,
+    DXGI_FORMAT format,
+    const char* functionName) {
+
     if (format == DXGI_FORMAT_R8G8B8A8_UNORM && !context.SupportsRgba8Uav()) {
         throw UnsupportedFeatureError(std::string(functionName) + ": R8G8B8A8 UAV typed store is not supported");
     }
@@ -84,16 +93,27 @@ void ValidateOutputFormatCaps(D3D12ProcessingContext& context, DXGI_FORMAT forma
     }
 }
 
-void ValidateFormatMatchesResource(DXGI_FORMAT requested, const D3D12Resource& resource, const char* functionName, const char* argumentName) {
+void ValidateFormatMatchesResource(
+    DXGI_FORMAT requested,
+    D3D12ResourceView resource,
+    const char* functionName,
+    const char* argumentName) {
+
     const DXGI_FORMAT actual = resource.GetFormat();
     if (requested != DXGI_FORMAT_UNKNOWN && requested != actual) {
         std::ostringstream os;
-        os << functionName << ": " << argumentName << " format does not match resource format";
+        os << functionName << ": " << argumentName
+           << " format does not match resource format";
         throw ValidationError(os.str());
     }
 }
 
-D3D12FusedConstants MakeConstants(const D3D12Resource& src, const D3D12Resource& dst, const FusedConvertResizeDesc& desc) {
+D3D12FusedConstants MakeConstants(
+    D3D12ResourceView src,
+    D3D12ResourceView dst,
+    const FusedConvertResizeDesc& desc,
+    const char* functionName) {
+
     const auto srcDesc = src.GetDesc();
     const auto dstDesc = dst.GetDesc();
     const UINT srcW = static_cast<UINT>(srcDesc.Width);
@@ -102,12 +122,12 @@ D3D12FusedConstants MakeConstants(const D3D12Resource& src, const D3D12Resource&
     const UINT dstH = dstDesc.Height;
     const ProcessingRect srcRect = ResolveRect(desc.srcRect, srcW, srcH);
     const ProcessingRect dstRect = ResolveRect(desc.dstRect, dstW, dstH);
-    ValidateRectInside(srcRect, srcW, srcH, "D3D12FusedProcessor::RecordConvertResize", "srcRect");
-    ValidateRectInside(dstRect, dstW, dstH, "D3D12FusedProcessor::RecordConvertResize", "dstRect");
+    ValidateRectInside(srcRect, srcW, srcH, functionName, "srcRect");
+    ValidateRectInside(dstRect, dstW, dstH, functionName, "dstRect");
 
     const DXGI_FORMAT srcFormat = ResolveFormat(desc.srcFormat, src);
     if (IsYuv420Format(srcFormat)) {
-        ValidateYuv420Rect(srcRect, "D3D12FusedProcessor::RecordConvertResize", "srcRect");
+        ValidateYuv420Rect(srcRect, functionName, "srcRect");
     }
 
     D3D12FusedConstants c = {};
@@ -132,33 +152,59 @@ D3D12FusedConstants MakeConstants(const D3D12Resource& src, const D3D12Resource&
     return c;
 }
 
+void RequireStateSource(
+    D3D12Resource* trackedSrc,
+    D3D12Resource* trackedDst,
+    const D3D12ProcessingStateDesc& state,
+    const char* functionName) {
+
+    if (!state.useExplicitStates && (!trackedSrc || !trackedDst)) {
+        throw ValidationError(std::string(functionName) +
+            ": D3D12ResourceView requires state.useExplicitStates == true");
+    }
+}
+
 void TransitionForPass(
     D3D12CommandContext& commandContext,
-    D3D12Resource& src,
-    D3D12Resource& dst,
-    const D3D12ProcessingStateDesc& state) {
+    D3D12ResourceView src,
+    D3D12ResourceView dst,
+    D3D12Resource* trackedSrc,
+    D3D12Resource* trackedDst,
+    const D3D12ProcessingStateDesc& state,
+    const char* functionName) {
 
     constexpr auto readState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     constexpr auto writeState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    const auto srcBefore = state.useExplicitStates ? state.srcBefore : src.GetState();
-    const auto dstBefore = state.useExplicitStates ? state.dstBefore : dst.GetState();
+
+    RequireStateSource(trackedSrc, trackedDst, state, functionName);
+
+    const auto srcBefore = state.useExplicitStates
+        ? state.srcBefore
+        : trackedSrc->GetState();
+    const auto dstBefore = state.useExplicitStates
+        ? state.dstBefore
+        : trackedDst->GetState();
 
     D3D12_RESOURCE_BARRIER barriers[2] = {};
     UINT count = 0;
-    if (srcBefore != readState) barriers[count++] = MakeTransitionBarrier(src.Get(), srcBefore, readState);
-    if (dstBefore != writeState) barriers[count++] = MakeTransitionBarrier(dst.Get(), dstBefore, writeState);
+    if (srcBefore != readState) {
+        barriers[count++] = MakeTransitionBarrier(src.Get(), srcBefore, readState);
+    }
+    if (dstBefore != writeState) {
+        barriers[count++] = MakeTransitionBarrier(dst.Get(), dstBefore, writeState);
+    }
     if (count) commandContext.ResourceBarrier(count, barriers);
 
     if (!state.useExplicitStates) {
-        src.SetState(readState);
-        dst.SetState(writeState);
+        trackedSrc->SetState(readState);
+        trackedDst->SetState(writeState);
     }
 }
 
 void TransitionAfterPass(
     D3D12CommandContext& commandContext,
-    D3D12Resource& src,
-    D3D12Resource& dst,
+    D3D12ResourceView src,
+    D3D12ResourceView dst,
     const D3D12ProcessingStateDesc& state) {
 
     constexpr auto readState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
@@ -169,12 +215,20 @@ void TransitionAfterPass(
 
     D3D12_RESOURCE_BARRIER barriers[2] = {};
     UINT count = 0;
-    if (state.srcAfter != readState) barriers[count++] = MakeTransitionBarrier(src.Get(), readState, state.srcAfter);
-    if (state.dstAfter != writeState) barriers[count++] = MakeTransitionBarrier(dst.Get(), writeState, state.dstAfter);
+    if (state.srcAfter != readState) {
+        barriers[count++] = MakeTransitionBarrier(src.Get(), readState, state.srcAfter);
+    }
+    if (state.dstAfter != writeState) {
+        barriers[count++] = MakeTransitionBarrier(dst.Get(), writeState, state.dstAfter);
+    }
     if (count) commandContext.ResourceBarrier(count, barriers);
 }
 
-void SetCommonComputeState(D3D12ProcessingContext& context, D3D12CommandContext& commandContext, const D3D12DescriptorRange& range) {
+void SetCommonComputeState(
+    D3D12ProcessingContext& context,
+    D3D12CommandContext& commandContext,
+    const D3D12DescriptorRange& range) {
+
     if (!range.shaderVisible) {
         throw ValidationError("D3D12FusedProcessor: descriptor range must be shader-visible");
     }
@@ -186,7 +240,11 @@ void SetCommonComputeState(D3D12ProcessingContext& context, D3D12CommandContext&
     cmd->SetDescriptorHeaps(1, heaps);
 }
 
-void SetRootConstants(const D3D12ComputePipeline& pipeline, D3D12CommandContext& commandContext, const D3D12FusedConstants& constants) {
+void SetRootConstants(
+    const D3D12ComputePipeline& pipeline,
+    D3D12CommandContext& commandContext,
+    const D3D12FusedConstants& constants) {
+
     const UINT index = pipeline.RootConstantsIndex();
     if (index == UINT_MAX) {
         throw ValidationError("D3D12FusedProcessor: pipeline has no root constants slot");
@@ -253,24 +311,67 @@ void D3D12FusedProcessor::RecordConvertResize(
     const FusedConvertResizeDesc& desc,
     const D3D12ProcessingStateDesc& state) {
 
+    RecordConvertResizeImpl(
+        commandContext,
+        D3D12ResourceView(src),
+        D3D12ResourceView(dst),
+        &src,
+        &dst,
+        desc,
+        state,
+        "D3D12FusedProcessor::RecordConvertResize");
+}
+
+void D3D12FusedProcessor::RecordConvertResizeView(
+    D3D12CommandContext& commandContext,
+    D3D12ResourceView src,
+    D3D12ResourceView dst,
+    const FusedConvertResizeDesc& desc,
+    const D3D12ProcessingStateDesc& state) {
+
+    RecordConvertResizeImpl(
+        commandContext,
+        src,
+        dst,
+        nullptr,
+        nullptr,
+        desc,
+        state,
+        "D3D12FusedProcessor::RecordConvertResizeView");
+}
+
+void D3D12FusedProcessor::RecordConvertResizeImpl(
+    D3D12CommandContext& commandContext,
+    D3D12ResourceView src,
+    D3D12ResourceView dst,
+    D3D12Resource* trackedSrc,
+    D3D12Resource* trackedDst,
+    const FusedConvertResizeDesc& desc,
+    const D3D12ProcessingStateDesc& state,
+    const char* functionName) {
+
     EnsurePipelines();
-    ValidateTexture2D(src, "D3D12FusedProcessor::RecordConvertResize", "src");
-    ValidateTexture2D(dst, "D3D12FusedProcessor::RecordConvertResize", "dst");
+    RequireStateSource(trackedSrc, trackedDst, state, functionName);
+    ValidateTexture2D(src, functionName, "src");
+    ValidateTexture2D(dst, functionName, "dst");
     if (src.Get() == dst.Get()) {
-        throw ValidationError("D3D12FusedProcessor::RecordConvertResize: in-place processing is not supported");
+        throw ValidationError(std::string(functionName) + ": in-place processing is not supported");
     }
-    ValidateOutputUav(dst, "D3D12FusedProcessor::RecordConvertResize");
-    ValidateFormatMatchesResource(desc.srcFormat, src, "D3D12FusedProcessor::RecordConvertResize", "src");
-    ValidateFormatMatchesResource(desc.dstFormat, dst, "D3D12FusedProcessor::RecordConvertResize", "dst");
+    ValidateOutputUav(dst, functionName);
+    ValidateFormatMatchesResource(desc.srcFormat, src, functionName, "src");
+    ValidateFormatMatchesResource(desc.dstFormat, dst, functionName, "dst");
 
     const DXGI_FORMAT srcFormat = ResolveFormat(desc.srcFormat, src);
     const DXGI_FORMAT dstFormat = ResolveFormat(desc.dstFormat, dst);
     if (IsRgbaLikeFormat(srcFormat) && IsRgbaLikeFormat(dstFormat)) {
-        RecordRgbToRgbResize(commandContext, src, dst, desc, state);
+        RecordRgbToRgbResizeImpl(
+            commandContext, src, dst, trackedSrc, trackedDst, desc, state, functionName);
     } else if (IsYuv420Format(srcFormat) && IsRgbaLikeFormat(dstFormat)) {
-        RecordYuv420ToRgbResize(commandContext, src, dst, desc, state);
+        RecordYuv420ToRgbResizeImpl(
+            commandContext, src, dst, trackedSrc, trackedDst, desc, state, functionName);
     } else {
-        throw UnsupportedFormatError("D3D12FusedProcessor::RecordConvertResize: supported paths are RGBA-like -> RGBA-like and YUV420 -> RGBA-like");
+        throw UnsupportedFormatError(std::string(functionName) +
+            ": supported paths are RGBA-like -> RGBA-like and YUV420 -> RGBA-like");
     }
 }
 
@@ -292,50 +393,73 @@ D3D12Resource D3D12FusedProcessor::CreateOutputTexture(
     return CreateTexture2D(core, width, height, format, initialState, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 }
 
-void D3D12FusedProcessor::RecordRgbToRgbResize(
+void D3D12FusedProcessor::RecordRgbToRgbResizeImpl(
     D3D12CommandContext& commandContext,
-    D3D12Resource& src,
-    D3D12Resource& dst,
+    D3D12ResourceView src,
+    D3D12ResourceView dst,
+    D3D12Resource* trackedSrc,
+    D3D12Resource* trackedDst,
     const FusedConvertResizeDesc& desc,
-    const D3D12ProcessingStateDesc& state) {
+    const D3D12ProcessingStateDesc& state,
+    const char* functionName) {
 
-    const auto constants = MakeConstants(src, dst, desc);
-    auto srcViews = CreateRgbaTextureViewSet(*m_context, src, true, false, static_cast<DXGI_FORMAT>(constants.srcFormat));
-    auto dstViews = CreateRgbaTextureViewSet(*m_context, dst, false, true, static_cast<DXGI_FORMAT>(constants.dstFormat));
+    const auto constants = MakeConstants(src, dst, desc, functionName);
+    auto srcViews = CreateRgbaTextureViewSetFromView(
+        *m_context, src, true, false, static_cast<DXGI_FORMAT>(constants.srcFormat));
+    auto dstViews = CreateRgbaTextureViewSetFromView(
+        *m_context, dst, false, true, static_cast<DXGI_FORMAT>(constants.dstFormat));
 
-    TransitionForPass(commandContext, src, dst, state);
+    TransitionForPass(
+        commandContext, src, dst, trackedSrc, trackedDst, state, functionName);
     SetCommonComputeState(*m_context, commandContext, srcViews.range);
 
     auto* cmd = commandContext.GetCommandList();
     m_pipelines->rgbToRgbResize.Bind(commandContext);
-    cmd->SetComputeRootDescriptorTable(m_pipelines->rgbToRgbResize.SrvTableIndex(), srcViews.Gpu(srcViews.srvIndex));
-    cmd->SetComputeRootDescriptorTable(m_pipelines->rgbToRgbResize.UavTableIndex(), dstViews.Gpu(dstViews.uavIndex));
+    cmd->SetComputeRootDescriptorTable(
+        m_pipelines->rgbToRgbResize.SrvTableIndex(), srcViews.Gpu(srcViews.srvIndex));
+    cmd->SetComputeRootDescriptorTable(
+        m_pipelines->rgbToRgbResize.UavTableIndex(), dstViews.Gpu(dstViews.uavIndex));
     SetRootConstants(m_pipelines->rgbToRgbResize, commandContext, constants);
-    m_pipelines->rgbToRgbResize.Dispatch(commandContext, DivideRoundUp(constants.dstWidth, kThreadGroupX), DivideRoundUp(constants.dstHeight, kThreadGroupY), 1);
+    m_pipelines->rgbToRgbResize.Dispatch(
+        commandContext,
+        DivideRoundUp(constants.dstWidth, kThreadGroupX),
+        DivideRoundUp(constants.dstHeight, kThreadGroupY),
+        1);
 
     TransitionAfterPass(commandContext, src, dst, state);
 }
 
-void D3D12FusedProcessor::RecordYuv420ToRgbResize(
+void D3D12FusedProcessor::RecordYuv420ToRgbResizeImpl(
     D3D12CommandContext& commandContext,
-    D3D12Resource& src,
-    D3D12Resource& dst,
+    D3D12ResourceView src,
+    D3D12ResourceView dst,
+    D3D12Resource* trackedSrc,
+    D3D12Resource* trackedDst,
     const FusedConvertResizeDesc& desc,
-    const D3D12ProcessingStateDesc& state) {
+    const D3D12ProcessingStateDesc& state,
+    const char* functionName) {
 
-    const auto constants = MakeConstants(src, dst, desc);
-    auto srcViews = CreateYuv420SrvViewSet(*m_context, src);
-    auto dstViews = CreateRgbaTextureViewSet(*m_context, dst, false, true, static_cast<DXGI_FORMAT>(constants.dstFormat));
+    const auto constants = MakeConstants(src, dst, desc, functionName);
+    auto srcViews = CreateYuv420SrvViewSetFromView(*m_context, src);
+    auto dstViews = CreateRgbaTextureViewSetFromView(
+        *m_context, dst, false, true, static_cast<DXGI_FORMAT>(constants.dstFormat));
 
-    TransitionForPass(commandContext, src, dst, state);
+    TransitionForPass(
+        commandContext, src, dst, trackedSrc, trackedDst, state, functionName);
     SetCommonComputeState(*m_context, commandContext, srcViews.range);
 
     auto* cmd = commandContext.GetCommandList();
     m_pipelines->yuv420ToRgbResize.Bind(commandContext);
-    cmd->SetComputeRootDescriptorTable(m_pipelines->yuv420ToRgbResize.SrvTableIndex(), srcViews.Gpu(srcViews.ySrvIndex));
-    cmd->SetComputeRootDescriptorTable(m_pipelines->yuv420ToRgbResize.UavTableIndex(), dstViews.Gpu(dstViews.uavIndex));
+    cmd->SetComputeRootDescriptorTable(
+        m_pipelines->yuv420ToRgbResize.SrvTableIndex(), srcViews.Gpu(srcViews.ySrvIndex));
+    cmd->SetComputeRootDescriptorTable(
+        m_pipelines->yuv420ToRgbResize.UavTableIndex(), dstViews.Gpu(dstViews.uavIndex));
     SetRootConstants(m_pipelines->yuv420ToRgbResize, commandContext, constants);
-    m_pipelines->yuv420ToRgbResize.Dispatch(commandContext, DivideRoundUp(constants.dstWidth, kThreadGroupX), DivideRoundUp(constants.dstHeight, kThreadGroupY), 1);
+    m_pipelines->yuv420ToRgbResize.Dispatch(
+        commandContext,
+        DivideRoundUp(constants.dstWidth, kThreadGroupX),
+        DivideRoundUp(constants.dstHeight, kThreadGroupY),
+        1);
 
     TransitionAfterPass(commandContext, src, dst, state);
 }
