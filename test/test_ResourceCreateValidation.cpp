@@ -7,6 +7,7 @@
 #include <D3D12Helper/D3D12Gpu/D3D12ResourceValidation.hpp>
 
 #include <cstdint>
+#include <string>
 
 using namespace D3D12CoreLib;
 
@@ -29,6 +30,7 @@ TEST(ResourceCreateValidation, CreatesDetailedDefaultBuffer) {
     D3D12BufferCreateDesc desc;
     desc.sizeBytes = 4096;
     desc.alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+    desc.heapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
     desc.resourceFlags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     desc.initialState = D3D12_RESOURCE_STATE_COMMON;
 
@@ -47,7 +49,7 @@ TEST(ResourceCreateValidation, CreatesDetailedDefaultBuffer) {
     CHECK(heapProperties.Type == D3D12_HEAP_TYPE_DEFAULT);
     CHECK_EQ(heapProperties.CreationNodeMask, 1u);
     CHECK_EQ(heapProperties.VisibleNodeMask, 1u);
-    CHECK(heapFlags == D3D12_HEAP_FLAG_NONE);
+    CHECK(heapFlags == D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS);
 }
 
 TEST(ResourceCreateValidation, CreatesUploadAndReadbackBuffers) {
@@ -79,6 +81,12 @@ TEST(ResourceCreateValidation, CreatesUploadAndReadbackBuffers) {
     CHECK_THROWS(CreateBufferDetailed(*core, uploadDesc));
     readbackDesc.initialState = D3D12_RESOURCE_STATE_COMMON;
     CHECK_THROWS(CreateBufferDetailed(*core, readbackDesc));
+
+    D3D12BufferCreateDesc invalidNodeMask;
+    invalidNodeMask.sizeBytes = 256;
+    invalidNodeMask.creationNodeMask = 1;
+    invalidNodeMask.visibleNodeMask = 2;
+    CHECK_THROWS(CreateBufferDetailed(*core, invalidNodeMask));
 }
 
 TEST(ResourceCreateValidation, CreatesDetailedTexture2D) {
@@ -102,6 +110,9 @@ TEST(ResourceCreateValidation, CreatesDetailedTexture2D) {
     CHECK_EQ(actual.MipLevels, 2u);
     CHECK(actual.Format == DXGI_FORMAT_R8G8B8A8_UNORM);
     CHECK((actual.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) != 0);
+
+    desc.format = DXGI_FORMAT_UNKNOWN;
+    CHECK_THROWS(CreateTexture2DDetailed(*core, desc));
 }
 
 TEST(ResourceCreateValidation, AcceptsMatchingTextureRequirement) {
