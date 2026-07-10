@@ -7,6 +7,7 @@
 #include <D3D12Helper/D3D12Processing/D3D12ProcessingContext.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12ProcessingShaderCache.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12Remap.hpp>
+#include <D3D12Helper/D3D12Gpu/D3D12ResourceView.hpp>
 #include <D3D12Helper/D3D12Core/D3D12CommandContext.hpp>
 #include <D3D12Helper/D3D12Framework/D3D12ComputePipeline.hpp>
 
@@ -86,12 +87,28 @@ public:
         const AffineTransformDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
 
+    // Non-owning path. Explicit before/after states are mandatory, and the
+    // caller must keep both resources alive until submitted GPU work completes.
+    void RecordAffineTransformView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        const AffineTransformDesc& desc,
+        const D3D12ProcessingStateDesc& state);
+
     void RecordPerspectiveTransform(
         D3D12CommandContext& commandContext,
         D3D12Resource& src,
         D3D12Resource& dst,
         const PerspectiveTransformDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
+
+    void RecordPerspectiveTransformView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView dst,
+        const PerspectiveTransformDesc& desc,
+        const D3D12ProcessingStateDesc& state);
 
     void RecordApplyLut3D(
         D3D12CommandContext& commandContext,
@@ -100,6 +117,14 @@ public:
         D3D12Resource& dst,
         const Lut3DDesc& desc,
         const D3D12ProcessingTwoInputStateDesc& state = {});
+
+    void RecordApplyLut3DView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView lut,
+        D3D12ResourceView dst,
+        const Lut3DDesc& desc,
+        const D3D12ProcessingTwoInputStateDesc& state);
 
     // Thin alias over D3D12Remapper for camera undistort/remap maps.
     // The map texture must match RemapDesc::mapFormat, currently R32G32_FLOAT.
@@ -110,6 +135,14 @@ public:
         D3D12Resource& dst,
         const RemapDesc& desc,
         const D3D12ProcessingTwoInputStateDesc& state = {});
+
+    void RecordApplyUndistortMapView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView map,
+        D3D12ResourceView dst,
+        const RemapDesc& desc,
+        const D3D12ProcessingTwoInputStateDesc& state);
 
     D3D12Resource CreateOutputTexture(
         D3D12Core& core,
