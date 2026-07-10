@@ -64,13 +64,13 @@ D3D12QueueSyncPoint D3D12Queue::SignalPoint() {
     return D3D12QueueSyncPoint(m_fence.Get(), value);
 }
 
-void D3D12Queue::GpuWait(const D3D12QueueSyncPoint& point) {
-    ValidateSyncPoint(point, "D3D12Queue::GpuWait");
+void D3D12Queue::GpuWaitPoint(const D3D12QueueSyncPoint& point) {
+    ValidateSyncPoint(point, "D3D12Queue::GpuWaitPoint");
     GpuWait(point.GetFence(), point.GetValue());
 }
 
-void D3D12Queue::CpuWait(const D3D12QueueSyncPoint& point) const {
-    ValidateSyncPoint(point, "D3D12Queue::CpuWait");
+void D3D12Queue::CpuWaitPoint(const D3D12QueueSyncPoint& point) const {
+    ValidateSyncPoint(point, "D3D12Queue::CpuWaitPoint");
 
     ID3D12Fence* fence = point.GetFence();
     const UINT64 value = point.GetValue();
@@ -80,14 +80,14 @@ void D3D12Queue::CpuWait(const D3D12QueueSyncPoint& point) const {
 
     HANDLE eventHandle = CreateEventW(nullptr, FALSE, FALSE, nullptr);
     if (!eventHandle) {
-        throw std::runtime_error("D3D12Queue::CpuWait: CreateEventW failed");
+        throw std::runtime_error("D3D12Queue::CpuWaitPoint: CreateEventW failed");
     }
 
     try {
         D3D12CORE_THROW_IF_FAILED(fence->SetEventOnCompletion(value, eventHandle));
         const DWORD waitResult = WaitForSingleObject(eventHandle, INFINITE);
         if (waitResult != WAIT_OBJECT_0) {
-            throw std::runtime_error("D3D12Queue::CpuWait: WaitForSingleObject failed");
+            throw std::runtime_error("D3D12Queue::CpuWaitPoint: WaitForSingleObject failed");
         }
         CloseHandle(eventHandle);
     } catch (...) {
