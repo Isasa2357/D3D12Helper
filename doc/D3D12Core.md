@@ -1,33 +1,32 @@
 # D3D12Core リファレンス（Layer 1）
 
-`include/D3D12Helper/D3D12Core` に含まれる型・関数のリファレンスです。すべて名前空間 `D3D12CoreLib` に属します。
+`include/D3D12Helper/D3D12Core`に含まれる型・関数の概要です。すべて名前空間`D3D12CoreLib`に属します。
 
 - [D3D12Common](#d3d12common)
 - [D3D12CoreConfig](#d3d12coreconfig)
 - [D3D12Core](#d3d12core)
 - [D3D12DeviceContext](#d3d12devicecontext)
-- [D3D12Queue](#d3d12queue)
+- [D3D12Queue / Sync Point](#d3d12queue--sync-point)
 - [D3D12Fence](#d3d12fence)
+- [D3D12CommandAllocatorContext](#d3d12commandallocatorcontext)
+- [CreateTypedCommandList](#createtypedcommandlist)
 - [D3D12CommandContext](#d3d12commandcontext)
-- [DxgiAdapterSelector](#dxgiadapterselector)
-- [Barrier ヘルパ](#barrier-ヘルパ)
-- [Subresource ヘルパ](#subresource-ヘルパ)
+- [D3D12BarrierBatch](#d3d12barrierbatch)
+- [Barrier helper](#barrier-helper)
+- [Subresource helper](#subresource-helper)
 - [FormatUtil](#formatutil)
-- [Debug ユーティリティ](#debug-ユーティリティ)
-- [ThrowIfFailed](#throwiffailed)
-- [D3D12SharedResource](#d3d12sharedresource)
-- [DxgiUtil](#dxgiutil)
+- [Debug / ThrowIfFailed](#debug--throwiffailed)
 
 ---
 
 ## D3D12Common
 
-`D3D12Common.hpp` は Layer 1 の共通 include です。`<windows.h>`、`<d3d12.h>`、`<dxgi1_6.h>`、WRL の `ComPtr` などを取り込みます。
+`D3D12Common.hpp`は`windows.h`、`d3d12.h`、`dxgi1_6.h`、WRL `ComPtr`などを取り込みます。
 
 ```cpp
 namespace D3D12CoreLib {
-    template <typename T>
-    using ComPtr = Microsoft::WRL::ComPtr<T>;
+template <typename T>
+using ComPtr = Microsoft::WRL::ComPtr<T>;
 }
 ```
 
@@ -35,55 +34,49 @@ namespace D3D12CoreLib {
 
 ## D3D12CoreConfig
 
-`D3D12Core` 初期化時の設定構造体です。
-
 ```cpp
 struct D3D12CoreConfig {
-    bool enableDebugLayer    = true;
+    bool enableDebugLayer = true;
     bool enableGpuValidation = false;
-    bool enableInfoQueue     = true;
-    bool enableDred          = true;
+    bool enableInfoQueue = true;
+    bool enableDred = true;
 
     bool preferHighPerformanceAdapter = true;
-    bool allowWarpAdapter             = false;
+    bool allowWarpAdapter = false;
 
-    bool createDirectQueue  = true;
+    bool createDirectQueue = true;
     bool createComputeQueue = false;
-    bool createCopyQueue    = true;
+    bool createCopyQueue = true;
 
-    bool breakOnError      = false;
+    bool breakOnError = false;
     bool breakOnCorruption = false;
-    bool breakOnWarning    = false;
+    bool breakOnWarning = false;
 };
 ```
 
-`createDirectQueue` の値に関わらず Direct Queue は必ず 1 つ作成されます。`createComputeQueue` / `createCopyQueue` は専用キューの追加生成を制御します。
+Direct Queueは常に作成されます。Compute / Copyの専用Queueはconfigで制御します。
 
 ---
 
 ## D3D12Core
 
-Device / Queue / Fence / CommandContext を束ねるファサードです。コピー禁止で、アプリケーション内では `std::shared_ptr<D3D12Core>` を共有して使う想定です。
+Device / Queue / Command Contextをまとめるfacadeです。Application内では`std::shared_ptr<D3D12Core>`をsubsystem間で共有する想定です。
 
 ```cpp
 void Initialize(const D3D12CoreConfig& config = {});
 void InitializeWithAdapterLuid(LUID luid, const D3D12CoreConfig& config = {});
 
-static std::shared_ptr<D3D12Core> CreateShared(const D3D12CoreConfig& config = {});
-static std::shared_ptr<D3D12Core> CreateSharedWithAdapterLuid(
-    LUID luid, const D3D12CoreConfig& config = {});
+static std::shared_ptr<D3D12Core> CreateShared(
+    const D3D12CoreConfig& config = {});
 
-D3D12DeviceContext&       DeviceContext();
-const D3D12DeviceContext& DeviceContext() const;
-
+D3D12DeviceContext& DeviceContext();
 D3D12Queue& DirectQueue();
 D3D12Queue& CopyQueue();
 D3D12Queue* ComputeQueue();
 
-ID3D12Device*       GetDevice() const;
-ID3D12CommandQueue* GetDirectCommandQueue();
-LUID                GetAdapterLuid() const;
-bool                IsSameAdapter(LUID other) const;
+ID3D12Device* GetDevice() const;
+LUID GetAdapterLuid() const;
+bool IsSameAdapter(LUID other) const;
 
 D3D12CommandContext CreateDirectContext();
 D3D12CommandContext CreateCopyContext();
@@ -96,76 +89,140 @@ void WaitIdle();
 
 ## D3D12DeviceContext
 
-DXGI Factory / Adapter / Device と LUID・アダプタ名を保持します。
+DXGI Factory / Adapter / DeviceとAdapter情報を保持します。
 
 ```cpp
-ID3D12Device*  GetDevice()  const;
+ID3D12Device* GetDevice() const;
 IDXGIFactory6* GetFactory() const;
 IDXGIAdapter1* GetAdapter() const;
 
-LUID         GetAdapterLuid() const;
+LUID GetAdapterLuid() const;
 std::wstring GetAdapterName() const;
 
 bool SupportsResourceSharing() const;
 bool SupportsTypedUavLoad(DXGI_FORMAT format) const;
 ```
 
-`SupportsResourceSharing()` は共有リソースが利用可能かを返します。`SupportsTypedUavLoad(format)` は指定フォーマットで typed UAV load が可能かを返します。
-
 ---
 
-## D3D12Queue
+## D3D12Queue / Sync Point
 
-`ID3D12CommandQueue` と専用 `D3D12Fence` を管理します。
+`D3D12Queue`は`ID3D12CommandQueue`と専用Fenceを管理します。
 
 ```cpp
-void Initialize(ID3D12Device* device,
-                D3D12_COMMAND_LIST_TYPE type,
-                D3D12_COMMAND_QUEUE_PRIORITY priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL);
+void Initialize(
+    ID3D12Device* device,
+    D3D12_COMMAND_LIST_TYPE type,
+    D3D12_COMMAND_QUEUE_PRIORITY priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL);
 
-ID3D12CommandQueue*     Get() const;
+ID3D12CommandQueue* Get() const;
 D3D12_COMMAND_LIST_TYPE GetType() const;
-D3D12Fence&             Fence();
+D3D12Fence& Fence();
 
-void   ExecuteCommandLists(UINT count, ID3D12CommandList* const* lists);
+void ExecuteCommandLists(UINT count, ID3D12CommandList* const* lists);
 UINT64 Signal();
-void   WaitForFenceValue(UINT64 value);
-void   WaitIdle();
-void   GpuWait(ID3D12Fence* fence, UINT64 value);
+void WaitForFenceValue(UINT64 value);
+void WaitIdle();
+void GpuWait(ID3D12Fence* fence, UINT64 value);
 ```
+
+v1.13.0では、Signal済みFenceと値を束ねる`D3D12QueueSyncPoint`を追加しました。
+
+```cpp
+D3D12QueueSyncPoint point = producer.SignalPoint();
+consumer.GpuWaitPoint(point); // CPUはblockしない。
+consumer.CpuWaitPoint(point); // pointのFence完了までCPU wait。
+```
+
+```cpp
+ID3D12Fence* D3D12QueueSyncPoint::GetFence() const;
+UINT64 D3D12QueueSyncPoint::GetValue() const;
+bool D3D12QueueSyncPoint::IsValid() const;
+```
+
+Sync PointはFenceを`ComPtr`で保持します。既存`GpuWait(ID3D12Fence*, UINT64)`の関数pointer一意性を保つため、同名overloadではなく`GpuWaitPoint`を使用します。
 
 ---
 
 ## D3D12Fence
 
-Fence 値の管理・GPU 完了待ち・キュー間同期を担います。
-
 ```cpp
 void Initialize(ID3D12Device* device);
-
 UINT64 Signal(ID3D12CommandQueue* queue);
-void   Wait(UINT64 fenceValue);
-void   WaitIdle(ID3D12CommandQueue* queue);
+void Wait(UINT64 fenceValue);
+void WaitIdle(ID3D12CommandQueue* queue);
 
-bool        IsCompleted(UINT64 fenceValue) const;
-UINT64      GetCurrentValue() const;
-UINT64      GetCompletedValue() const;
+bool IsCompleted(UINT64 fenceValue) const;
+UINT64 GetCurrentValue() const;
+UINT64 GetCompletedValue() const;
 ID3D12Fence* Get() const;
 ```
 
 ---
 
+## D3D12CommandAllocatorContext
+
+Command Allocatorの所有とCommand List interface選択を分離するv1.13.0 APIです。
+
+```cpp
+D3D12CommandAllocatorContext allocator;
+allocator.Initialize(device, D3D12_COMMAND_LIST_TYPE_COMPUTE);
+
+ID3D12CommandAllocator* raw = allocator.GetAllocator();
+D3D12_COMMAND_LIST_TYPE type = allocator.GetType();
+bool initialized = allocator.IsInitialized();
+```
+
+```cpp
+void Reset();
+```
+
+`Reset()`はGPU待機を行いません。そのAllocatorで記録したすべての投入済みCommand Listが完了した後に呼び出してください。
+
+---
+
+## CreateTypedCommandList
+
+```cpp
+auto list = CreateTypedCommandList<ID3D12GraphicsCommandList>(
+    device,
+    D3D12_COMMAND_LIST_TYPE_COMPUTE,
+    allocator);
+```
+
+次の2経路があります。
+
+```cpp
+template<class TCommandList>
+ComPtr<TCommandList> CreateTypedCommandList(
+    ID3D12Device* device,
+    D3D12_COMMAND_LIST_TYPE type,
+    ID3D12CommandAllocator* allocator);
+
+template<class TCommandList>
+ComPtr<TCommandList> CreateTypedCommandList(
+    ID3D12Device* device,
+    D3D12_COMMAND_LIST_TYPE type,
+    const D3D12CommandAllocatorContext& allocatorContext);
+```
+
+Context版は要求typeとAllocator typeの不一致をD3D12呼び出し前に拒否します。raw Allocator版はAllocator typeをqueryできないため、D3D12 runtimeの検証へ委ねます。
+
+D3D12Helper本体は`d3d12video.h`に依存しません。上位library側でSDK headerをincludeすれば、同じtemplateを`ID3D12VideoDecodeCommandList`などへinstantiateできます。
+
+---
+
 ## D3D12CommandContext
 
-Command Allocator + Command List をまとめた、明示的な Reset/Close モデルの記録口です。
+既存のAllocator + Graphics Command List wrapperです。v1.13.0では内部実装を`D3D12CommandAllocatorContext`と`CreateTypedCommandList<ID3D12GraphicsCommandList>`へ共通化しましたが、公開signatureは変更していません。
 
 ```cpp
 void Initialize(ID3D12Device* device, D3D12_COMMAND_LIST_TYPE type);
 
 ID3D12GraphicsCommandList* GetCommandList() const;
-ID3D12CommandAllocator*    GetAllocator() const;
-D3D12_COMMAND_LIST_TYPE    GetType() const;
-bool                       IsOpen() const;
+ID3D12CommandAllocator* GetAllocator() const;
+D3D12_COMMAND_LIST_TYPE GetType() const;
+bool IsOpen() const;
 
 void Reset();
 void Close();
@@ -174,28 +231,44 @@ void ResourceBarrier(const D3D12_RESOURCE_BARRIER& barrier);
 void ResourceBarrier(UINT count, const D3D12_RESOURCE_BARRIER* barriers);
 ```
 
-`Reset()` の前に、その Allocator で積んだ GPU 処理が完了している必要があります。
+`Reset()`前にGPU完了をFenceで保証してください。二重`Close()`は無害です。
 
 ---
 
-## DxgiAdapterSelector
+## D3D12BarrierBatch
 
-DXGI Factory の生成とアダプタ選択を行う静的ヘルパです。
+明示before / afterを持つlegacy Resource Barrierの集約型です。
 
 ```cpp
-static ComPtr<IDXGIFactory6> CreateFactory(bool enableDebug);
+D3D12BarrierBatch batch;
+batch.Reserve(4);
+batch.Transition(resource, before, after);
+batch.Uav(resource);
+batch.Aliasing(beforeResource, afterResource);
 
-static ComPtr<IDXGIAdapter1> SelectHardwareAdapter(
-    IDXGIFactory6* factory, bool preferHighPerformance, bool allowWarp);
-
-static ComPtr<IDXGIAdapter1> SelectAdapterByLuid(IDXGIFactory6* factory, LUID luid);
+commandContext.ResourceBarrier(batch.Count(), batch.Data());
+batch.Clear();
 ```
+
+```cpp
+bool Transition(
+    ID3D12Resource* resource,
+    D3D12_RESOURCE_STATES before,
+    D3D12_RESOURCE_STATES after,
+    UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
+
+void Uav(ID3D12Resource* resource);
+void Aliasing(ID3D12Resource* before, ID3D12Resource* after);
+```
+
+- `before == after`のTransitionは追加せず`false`を返す。
+- 自動state trackingは行わない。
+- Resource state cacheを更新しない。
+- Command Listを保持しない。
 
 ---
 
-## Barrier ヘルパ
-
-`D3D12Barrier.hpp` の自由関数です。
+## Barrier helper
 
 ```cpp
 D3D12_RESOURCE_BARRIER MakeTransitionBarrier(
@@ -205,16 +278,14 @@ D3D12_RESOURCE_BARRIER MakeTransitionBarrier(
     UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
 
 D3D12_RESOURCE_BARRIER MakeUavBarrier(ID3D12Resource* resource);
-
 D3D12_RESOURCE_BARRIER MakeAliasingBarrier(
-    ID3D12Resource* before, ID3D12Resource* after);
+    ID3D12Resource* before,
+    ID3D12Resource* after);
 ```
 
 ---
 
-## Subresource ヘルパ
-
-`D3D12Subresource.hpp` の自由関数です。mip slice / array slice / plane slice から D3D12 の subresource index を計算します。
+## Subresource helper
 
 ```cpp
 UINT CalcSubresource(
@@ -225,62 +296,43 @@ UINT CalcSubresource(
     UINT arraySize) noexcept;
 ```
 
-計算式は D3D12 の標準的な subresource 配列順に合わせています。
-
-```cpp
-subresource = mipSlice + arraySlice * mipLevels + planeSlice * mipLevels * arraySize;
+```text
+subresource = mipSlice + arraySlice * mipLevels + planeSlice * mipLevels * arraySize
 ```
-
-planar format の plane 単位 barrier / copy、mipmap texture、texture array などで使用します。
 
 ---
 
 ## FormatUtil
 
-`D3D12CoreLib::FormatUtil` 名前空間の `DXGI_FORMAT` 判定ヘルパです。
-
 ```cpp
 bool IsDepthFormat(DXGI_FORMAT format);
 bool IsTypelessFormat(DXGI_FORMAT format);
 bool IsBlockCompressedFormat(DXGI_FORMAT format);
-
 bool IsYuvFormat(DXGI_FORMAT format);
 bool IsPlanarFormat(DXGI_FORMAT format);
 bool RequiresEvenSize(DXGI_FORMAT format);
 UINT GetKnownPlaneCount(DXGI_FORMAT format);
-
 UINT BitsPerPixel(DXGI_FORMAT format);
 UINT BytesPerPixel(DXGI_FORMAT format);
 ```
 
-`IsYuvFormat` は packed / planar を含む video 系 format 判定です。`IsPlanarFormat` は NV12 / P010 など複数 plane を持つ format に対して true を返します。`GetKnownPlaneCount` は既知 format の静的 plane 数を返し、`DXGI_FORMAT_UNKNOWN` では 0 を返します。
-
 ---
 
-## Debug ユーティリティ
-
-`D3D12CoreLib::D3D12Debug` 名前空間の補助関数です。
+## Debug / ThrowIfFailed
 
 ```cpp
-void EnableDebugLayer(bool enableGpuValidation);
-void EnableDred();
-void SetupInfoQueue(ID3D12Device* device,
-                    bool breakOnError, bool breakOnCorruption, bool breakOnWarning);
-void PrintDredInfo(ID3D12Device* device);
-
-template <typename T>
-void SetDebugName(T* object, const wchar_t* name);
+void D3D12Debug::EnableDebugLayer(bool enableGpuValidation);
+void D3D12Debug::EnableDred();
+void D3D12Debug::SetupInfoQueue(
+    ID3D12Device* device,
+    bool breakOnError,
+    bool breakOnCorruption,
+    bool breakOnWarning);
+void D3D12Debug::PrintDredInfo(ID3D12Device* device);
 ```
-
----
-
-## ThrowIfFailed
-
-`HRESULT` を例外化します。
 
 ```cpp
 std::string HResultToHexString(HRESULT hr);
-
 void ThrowIfFailed(HRESULT hr);
 void ThrowIfFailed(HRESULT hr, const char* message);
 
@@ -288,29 +340,4 @@ void ThrowIfFailed(HRESULT hr, const char* message);
 #define D3D12CORE_THROW_IF_FAILED_MSG(hr, msg) /* ... */
 ```
 
----
-
-## D3D12SharedResource
-
-D3D11/D3D12 共有や外部 API 連携のための、共有 Handle 作成 / オープン補助です。
-
-```cpp
-static HANDLE CreateSharedHandle(
-    ID3D12Device* device, ID3D12Resource* resource, LPCWSTR name = nullptr);
-
-static ComPtr<ID3D12Resource> OpenSharedHandle(
-    ID3D12Device* device, HANDLE handle);
-```
-
-共有するリソースは `D3D12_HEAP_FLAG_SHARED` 付きで作成されている必要があります。`CreateSharedHandle` の戻り値 `HANDLE` は、呼び出し側が `CloseHandle` で解放します。
-
----
-
-## DxgiUtil
-
-LUID 関連の小ユーティリティです。
-
-```cpp
-inline bool LuidEquals(const LUID& a, const LUID& b);
-std::wstring LuidToWString(const LUID& luid);
-```
+関連設計は[`GenericGpuFoundationPhase1.md`](GenericGpuFoundationPhase1.md)、[`GenericGpuFoundationPhase3TypedCommandList.md`](GenericGpuFoundationPhase3TypedCommandList.md)を参照してください。
