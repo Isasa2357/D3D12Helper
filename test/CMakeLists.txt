@@ -138,6 +138,7 @@ set(D3D12HELPER_TEST_SUITES
     Interop
     Hardening
     Processing
+    YuvHlslPrimitives
     ProcessingBlur
     ProcessingRegionEffect
     ProcessingRegionBlur
