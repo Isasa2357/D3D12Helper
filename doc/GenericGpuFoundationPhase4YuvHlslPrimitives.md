@@ -12,8 +12,8 @@ Phase 4 exposes the color-conversion and resize building blocks used by the Proc
   - point and linear logical-RGBA sampling
   - NV12/P010 luma and chroma store helpers
 - `shaders/D3D12Processing/ColorSpace.hlsli`
-  - retains the legacy `DecodeYuv` / `EncodeYuv` source contract
-  - delegates to the new library using NV12-compatible 8-bit semantics
+  - retains the previous implementation and behavior of `DecodeYuv` / `EncodeYuv`
+  - existing application shaders may continue including it unchanged
 - `shaders/D3D12Processing/YuvPrimitiveProbe.hlsl`
   - test-only compute entry point for GPU golden values
 
@@ -108,7 +108,7 @@ float3 rgb = D3D12SampleYuv420RgbLinear(
 Dst[destinationPixel] = float4(rgb, 1.0f);
 ```
 
-`sample/18_ProcessingCustomFusedShader` uses this path for NV12/P010 -> RGB -> resize -> outside-region darken in one dispatch.
+`sample/18_ProcessingCustomFusedShader` uses this path for YUV420 -> RGB -> resize -> outside-region darken in one dispatch. Its executable currently creates an NV12 input, while the included shader path also accepts P010 through `SrcFormat`.
 
 ## Existing Processing integration
 
@@ -117,8 +117,11 @@ The following built-in shaders now use the same primitives:
 - `ConvertNv12ToRgb.hlsl`
 - `ConvertRgbToNv12.hlsl`
 - `FusedYuv420ToRgbResize.hlsl`
+- `FusedRgbToRgbResize.hlsl`
 
 The filenames remain unchanged for source and runtime compatibility. Despite their historical `Nv12` names, format-dependent paths select NV12 or P010 from `SrcFormat` / `DstFormat`.
+
+`ColorSpace.hlsli` is intentionally not redirected to the format-aware functions. This preserves the previous numeric behavior for application shaders already calling the four-argument `DecodeYuv` and three-argument `EncodeYuv` functions. New shaders should include `YuvPrimitives.hlsli` and pass the actual format explicitly.
 
 ## Tests
 
@@ -130,5 +133,7 @@ The `YuvHlslPrimitives` suite includes:
 - CPU encode/decode round trips across matrix, range, and format combinations
 - compilation of all refactored Processing shaders
 - GPU output comparison against CPU reference values
+- readback of actual NV12 plane bytes after RGBA -> NV12 conversion
+- readback of actual P010 high-bit storage words after RGBA -> P010 conversion
 
 No existing C++ public function or type is removed or overloaded by this phase.
