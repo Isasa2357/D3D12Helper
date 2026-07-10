@@ -182,7 +182,7 @@ const std::byte* data = mapped.Data();
 ```cpp
 D3D12QueueSyncPoint point = producerQueue.SignalPoint();
 consumerQueue.GpuWaitPoint(point);
-point.CpuWait();
+consumerQueue.CpuWaitPoint(point);
 ```
 
 ### Typed Command List
