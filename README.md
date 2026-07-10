@@ -2,58 +2,64 @@
 
 Direct3D 12 の定型処理を薄くラップした **C++17 ヘルパライブラリ**です。
 
-**現在の安定版は v1.12.0 です。** v1.12.0 では、D3D12Processing に affine / perspective transform、3D LUT application、undistort-map application facade を追加しました。既存の `D3D12Framework` は v1.x 互換 wrapper として維持します。
+**現在の安定版は v1.13.0 です。** v1.13.0 では、範囲指定Readback、Queue Sync Point、詳細Resource生成・検証、非所有`D3D12ResourceView`、typed command-list基盤、NV12/P010対応YUV HLSL primitiveを追加しました。既存のv1.x公開APIと`D3D12Framework`互換wrapperは維持しています。
 
-デバイス生成、DXGI アダプタ選択、Queue / Fence / CommandList 管理、リソース作成、Descriptor 管理、Upload / Readback、Compute / Graphics パイプライン、シェーダコンパイル、SwapChain 作成、共有リソース作成、GPU 画像処理など、D3D12 アプリケーションで繰り返し書くコードを軽量クラスと自由関数にまとめています。
+デバイス生成、DXGIアダプタ選択、Queue / Fence / Command List管理、Resource・Descriptor管理、Upload / Readback、Compute / Graphics pipeline、Shader compile、SwapChain、共有Resource、GPU画像処理など、D3D12アプリケーションで繰り返し書く処理を軽量クラスと自由関数にまとめています。
 
-> 姉妹プロジェクト [D3D11Helper](https://github.com/Isasa2357/D3D11Helper) と近い設計思想で、D3D11 / D3D12 間の移植時に認知コストが小さくなるようにしています。
+> 姉妹プロジェクト [D3D11Helper](https://github.com/Isasa2357/D3D11Helper) と近い設計思想で、D3D11 / D3D12間の移植時に認知コストが小さくなるようにしています。
 
 ---
 
 ## 特徴
 
 - **公開モジュール分離**  
-  `D3D12Foundation`、`D3D12Core`、`D3D12Gpu`、`D3D12Presentation`、`D3D12Processing`、`D3D12Interop`、`D3D12Diagnostics` に分類。
-- **`D3D12Core&` を取る自由関数**  
-  `CreateBuffer`、`CreateTexture2D`、`CreateStructuredBuffer`、`CreateConstantBuffer`、`CreateSharedTexture2D`、各種 View 作成、`RecordUploadTexture2D` などを 1 行で呼べる。
-- **Command Queue / Fence / CommandContext 管理**  
-  Direct / Copy / Compute Queue と Fence 値管理、Command Allocator + Command List の Reset / Close を整理。
-- **Descriptor 管理**  
-  `D3D12DescriptorHeap` と `D3D12DescriptorAllocator` により、RTV / DSV / CBV_SRV_UAV / Sampler Heap の確保を簡略化。
-- **Upload / Readback 補助**  
-  `D3D12UploadBuffer`、`D3D12UploadRing`、`D3D12ReadbackBuffer` により、CPU↔GPU 転送を扱いやすくする。
-- **ComputePipeline / GraphicsPipeline**  
-  Root Signature / PSO / Shader の設定をまとめて管理。`Bind` / `Dispatch` などの薄い補助も提供。
+  `D3D12Foundation`、`D3D12Core`、`D3D12Gpu`、`D3D12Presentation`、`D3D12Processing`、`D3D12Interop`、`D3D12Diagnostics`に分類。
+- **`D3D12Core&`を取る自由関数**  
+  Buffer / Texture / View / Upload / Readback / shared Resourceなどを短い呼び出しで生成・記録。
+- **Queue / Fence / Command Context**  
+  Direct / Copy / Compute Queue、Fence値、Command Allocator + Command ListのReset / Closeを整理。
+- **Queue Sync Point**  
+  Signal済みFenceと値を`D3D12QueueSyncPoint`へまとめ、CPU wait・Queue間GPU waitに再利用。
+- **Typed Command List**  
+  `D3D12CommandAllocatorContext`と`CreateTypedCommandList<T>()`により、Direct / Compute / CopyおよびSDK提供の特殊Command List interfaceを共通生成。
+- **詳細Resource生成と検証**  
+  heap property、alignment、flags、initial state、clear valueを指定できる詳細APIと、Texture2D要件検証を提供。
+- **非所有Resource View**  
+  `D3D12ResourceView`は`AddRef` / `Release`を行わず、外部所有Resourceを明示stateでProcessingへ渡せる。
+- **Barrier集約**  
+  `D3D12BarrierBatch`でTransition / UAV / Aliasing barrierをまとめて保持。
+- **Upload / Readback**  
+  `D3D12UploadBuffer`、`D3D12UploadRing`、`D3D12ReadbackBuffer`、範囲指定RAII `MapRead()`を提供。
+- **Compute / Graphics Pipeline**  
+  Root Signature / PSO / Shader設定をまとめ、`Bind` / `Dispatch`などの薄い補助を提供。
 - **ShaderCompiler**  
-  `.cso` 読み込み、`D3DCompile`、DXC による HLSL コンパイルを扱う。
-- **Shared Resource 補助**  
-  D3D12 共有ハンドルを作るための `D3D12SharedResource` と、共有可能 Texture2D を作る `CreateSharedTexture2D` を提供。
+  `.cso`読込、`D3DCompile`、DXCによるHLSL compileを扱う。
 - **D3D12Processing**  
-  GPU 上で format conversion、resize、remap、composite、blur、region effect、mask、threshold、pyramid blur、affine / perspective transform、3D LUT などを実行する Layer 3。NV12 / P010 / RGBA8 / BGRA8 / RGBA16F を扱う。
-- **ThrowIfFailed**  
-  HRESULT 失敗時に式・ファイル・行・メッセージ付きで例外化。
+  format conversion、resize、remap、composite、blur、region effect、mask、threshold、pyramid、affine / perspective、3D LUTなどをGPU実行。
+- **YUV HLSL library**  
+  application-owned shaderからincludeできる`YuvPrimitives.hlsli`を提供。NV12 / P010、BT.601 / 709 / 2020、Full / Limited Range、Point / Linear samplingに対応。
+- **Shared Resource / Diagnostics**  
+  共有Handle、共有Fence、Debug Layer、InfoQueue、DRED、object nameを補助。
 
 ---
 
 ## アーキテクチャ
-
-v1.1.0 以降の公開モジュール構成は次のとおりです。
 
 ```text
 D3D12Foundation
   DirectX / DXGI / HRESULT / format utility
 
 D3D12Core
-  device / adapter / queue / fence / command context / barrier
+  device / adapter / queue / fence / command allocator / command list / barrier
 
 D3D12Gpu
-  resource / descriptor / upload / readback / pipeline / shader compiler / view helpers
+  resource / descriptor / upload / readback / pipeline / shader compiler / validation
 
 D3D12Presentation
   swap-chain and presentation helpers
 
 D3D12Processing
-  GPU image processing
+  GPU image processing and reusable HLSL primitives
 
 D3D12Interop
   shared resource and shared fence helpers
@@ -62,15 +68,15 @@ D3D12Diagnostics
   debug layer / InfoQueue / DRED / object naming
 ```
 
-既存の Layer 対応は次のように維持します。
+既存Layerとの対応:
 
 ```text
 Layer 1 : D3D12Core
-Layer 2 : D3D12Framework  -> v1.1.0 以降は D3D12Gpu / D3D12Presentation / D3D12Interop へ分類
+Layer 2 : D3D12Framework -> D3D12Gpu / D3D12Presentation / D3D12Interopへ分類
 Layer 3 : D3D12Processing
 ```
 
-`D3D12Framework` は削除せず、v1.x 互換 wrapper として残します。
+`D3D12Framework`は削除せず、v1.x互換wrapperとして残します。
 
 ---
 
@@ -96,7 +102,7 @@ D3D12Helper/
 └── doc/
 ```
 
-Processing Layer を使う場合は `shaders/D3D12Processing/` も実行時に参照できる場所へ配置してください。
+Processing Layerを使う場合は`shaders/D3D12Processing/`も実行時に参照できる場所へ配置してください。
 
 ---
 
@@ -114,14 +120,9 @@ int main() {
     try {
         D3D12CoreConfig config;
         config.enableDebugLayer = true;
-        config.enableGpuValidation = false;
         config.allowWarpAdapter = true;
 
         auto core = D3D12Core::CreateShared(config);
-
-        std::wcout << L"Adapter: "
-                   << core->DeviceContext().GetAdapterName()
-                   << L"\n";
 
         auto buffer = CreateBuffer(
             *core,
@@ -130,25 +131,19 @@ int main() {
             D3D12_RESOURCE_STATE_COMMON,
             D3D12_RESOURCE_FLAG_NONE);
 
+        std::wcout << L"Adapter: "
+                   << core->DeviceContext().GetAdapterName() << L"\n";
+
         core->WaitIdle();
     } catch (const std::exception& e) {
         std::cerr << "D3D12Helper error: " << e.what() << "\n";
         return 1;
     }
-
     return 0;
 }
 ```
 
-既存のサンプル・テストでは、短い include 形式も使えるようにしています。
-
-```cpp
-#include "D3D12Core/D3D12Core.hpp"
-#include "D3D12Framework/D3D12Framework.hpp"
-#include "D3D12Processing/D3D12Processing.hpp"
-```
-
-推奨 include 形式:
+推奨include:
 
 ```cpp
 #include <D3D12Helper/D3D12Foundation/D3D12Foundation.hpp>
@@ -160,34 +155,118 @@ int main() {
 #include <D3D12Helper/D3D12Diagnostics/D3D12Diagnostics.hpp>
 ```
 
-互換 include 形式:
+互換include:
 
 ```cpp
 #include <D3D12Helper/D3D12Framework/D3D12Framework.hpp>
 ```
 
-CMake ターゲット `D3D12Helper::D3D12Helper` をリンクすると、どちらの include 形式も使えるように include path を設定しています。
+CMake target `D3D12Helper::D3D12Helper`をlinkすると必要なinclude pathが設定されます。
+
+---
+
+## v1.13.0 汎用GPU基盤の例
+
+### 範囲指定Readback
+
+```cpp
+auto mapped = readback.MapRead(offset, size);
+const std::byte* data = mapped.Data();
+// mappedの破棄時にread-only rangeとしてUnmapされる。
+```
+
+既存の`Map()` / `Unmap()`も互換APIとして残っています。
+
+### Queue Sync Point
+
+```cpp
+D3D12QueueSyncPoint point = producerQueue.SignalPoint();
+consumerQueue.GpuWaitPoint(point);
+point.CpuWait();
+```
+
+### Typed Command List
+
+```cpp
+D3D12CommandAllocatorContext allocator;
+allocator.Initialize(device, D3D12_COMMAND_LIST_TYPE_COMPUTE);
+
+auto list = CreateTypedCommandList<ID3D12GraphicsCommandList>(
+    device,
+    D3D12_COMMAND_LIST_TYPE_COMPUTE,
+    allocator);
+```
+
+AllocatorをResetする前に、そのAllocatorで記録したGPU処理がFence等で完了していることを呼び出し側が保証してください。
+
+### 非所有Resource View
+
+```cpp
+D3D12ProcessingStateDesc state;
+state.useExplicitStates = true;
+state.srcBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+state.srcAfter  = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+state.dstBefore = D3D12_RESOURCE_STATE_COMMON;
+state.dstAfter  = D3D12_RESOURCE_STATE_COPY_SOURCE;
+
+converter.RecordConvertView(
+    commandContext,
+    D3D12ResourceView(externalSrc),
+    D3D12ResourceView(externalDst),
+    desc,
+    state);
+```
+
+ViewはResourceを所有しません。投入したGPU処理が完了するまで外部ownerがResourceを保持してください。
+
+### Custom fused YUV shader
+
+```hlsl
+#include "ProcessingCommon.hlsli"
+#include "YuvPrimitives.hlsli"
+
+float3 rgb = D3D12SampleYuv420RgbLinear(
+    YPlane,
+    UVPlane,
+    destinationPixel,
+    uint2(SrcX, SrcY),
+    uint2(SrcWidth, SrcHeight),
+    float2(ScaleX, ScaleY),
+    SrcFormat,
+    SrcRange,
+    SrcMatrix);
+```
+
+変換・resize・独自effectを単一dispatchへ融合できます。
 
 ---
 
 ## Processing Layer の最小例
 
 ```cpp
-#include "D3D12Core/D3D12Core.hpp"
-#include "D3D12Framework/D3D12Framework.hpp"
-#include "D3D12Processing/D3D12Processing.hpp"
-
 using namespace D3D12CoreLib;
 using namespace D3D12CoreLib::Processing;
 
 D3D12DescriptorAllocator cbvSrvUav;
-cbvSrvUav.Initialize(core->GetDevice(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1024, true);
+cbvSrvUav.Initialize(
+    core->GetDevice(),
+    D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+    1024,
+    true);
 
 D3D12DescriptorAllocator sampler;
-sampler.Initialize(core->GetDevice(), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 16, true);
+sampler.Initialize(
+    core->GetDevice(),
+    D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+    16,
+    true);
 
 D3D12ProcessingContext processing;
-processing.Initialize(*core, &cbvSrvUav, &sampler, "shaders/D3D12Processing");
+processing.Initialize(
+    *core,
+    &cbvSrvUav,
+    &sampler,
+    "shaders/D3D12Processing");
 
 D3D12FusedProcessor fused;
 fused.Initialize(processing);
@@ -209,30 +288,32 @@ fused.RecordConvertResize(ctx, srcNv12, dst, desc);
 ctx.Close();
 ```
 
-詳細は [`doc/D3D12Processing.md`](doc/D3D12Processing.md) を参照してください。
+詳細は[`doc/D3D12Processing.md`](doc/D3D12Processing.md)と[`doc/D3D12ProcessingWorkflow.md`](doc/D3D12ProcessingWorkflow.md)を参照してください。
 
 ---
 
-## Processing Layer の機能一覧
+## Processing API 一覧
 
 | Processor | 主な機能 |
 | --- | --- |
-| `D3D12FormatConverter` | RGBA-like↔RGBA-like、NV12/P010→RGBA-like、RGBA-like→NV12/P010 |
-| `D3D12Resizer` | RGBA-like resize。Point / Linear |
-| `D3D12Remapper` | R32G32_FLOAT map による remap |
+| `D3D12FormatConverter` | RGBA-like↔RGBA-like、NV12/P010↔RGBA-like |
+| `D3D12Resizer` | RGBA-like Point / Linear resize |
+| `D3D12Remapper` | R32G32_FLOAT mapによるremap |
 | `D3D12Compositor` | Copy / AlphaBlend / PremultipliedAlpha / Add |
 | `D3D12FusedProcessor` | convert + resize fused pass |
 | `D3D12Blurrer` | Gaussian / Box blur |
-| `D3D12RegionEffectProcessor` | 円形・矩形領域の darken / tint / grayscale / highlight / alpha fade / vignette |
-| `D3D12RegionBlur` | 領域内・領域外 blur |
+| `D3D12RegionEffectProcessor` | 円形・矩形region effect |
+| `D3D12RegionBlur` | 領域内・領域外blur |
 | `D3D12ColorAdjuster` | brightness / contrast / gamma / saturation |
 | `D3D12KernelFilter` | Custom3x3 / Sharpen / EdgeDetect |
-| `D3D12MaskProcessor` | apply mask / blend by mask / combine masks / invert |
-| `D3D12ThresholdProcessor` | threshold / range threshold / heatmap / class color map / mask overlay |
+| `D3D12MaskProcessor` | apply / blend / combine / invert mask |
+| `D3D12ThresholdProcessor` | threshold / heatmap / class color map / overlay |
 | `D3D12PyramidProcessor` | downsample2x / upsample2x |
 | `D3D12PyramidBlur` | downsample → low-res blur → upsample |
-| `D3D12PyramidRegionBlur` | 高速 region blur |
-| `D3D12AdvancedProcessor` | affine / perspective transform、3D LUT、undistort-map application facade |
+| `D3D12PyramidRegionBlur` | 高速region blur |
+| `D3D12AdvancedProcessor` | affine / perspective / 3D LUT / undistort map |
+
+呼び出し側Resourceを受け取る公開`Record*`処理には、明示state専用の別名`*View`経路があります。
 
 ---
 
@@ -241,44 +322,30 @@ ctx.Close();
 ### 必要環境
 
 - Windows 10 / 11
-- Visual Studio 2019 以降
+- Visual Studio 2019以降
 - MSVC / C++17
-- CMake 3.20 以降
-- Direct3D 12 対応 GPU
-  - WARP を許可する設定であれば、GPU がない環境でも一部サンプル・テストは動作可能です。
-- DXC を使う場合は `dxcompiler.dll` / `dxil.dll`
+- CMake 3.20以降
+- Direct3D 12対応GPU、またはWARP
+- DXCを使う場合は`dxcompiler.dll` / `dxil.dll`
 
-### DXC ランタイムの準備
-
-NuGet から取得する場合は、リポジトリ直下で次を実行します。
+NuGetからDXC runtimeを取得する例:
 
 ```bat
 nuget install Microsoft.Direct3D.DXC -Version 1.9.2602.24 -OutputDirectory packages
 ```
 
-CMake は `packages/` やユーザーの NuGet キャッシュから `dxcompiler.dll` / `dxil.dll` を探し、サンプル・テストの exe 横へコピーします。
-
-### CMake ビルド
+CMake build:
 
 ```bat
 cmake -S . -B out/build/default -G "Visual Studio 17 2022" -A x64 ^
   -DD3D12HELPER_BUILD_SAMPLES=ON ^
   -DD3D12HELPER_BUILD_TESTS=ON
 
-cmake --build out/build/default --config Debug
+cmake --build out/build/default --config Debug --parallel
+ctest --test-dir out/build/default -C Debug --parallel --output-on-failure
 ```
 
-### テスト
-
-```bat
-ctest --test-dir out/build/default -C Debug --output-on-failure
-```
-
-特定の suite だけ実行する場合：
-
-```bat
-ctest --test-dir out/build/default -C Debug -R Processing --output-on-failure
-```
+Install / `find_package` smoke testを含むrelease確認では、`D3D12HELPER_INSTALL=ON`と`D3D12HELPER_ENABLE_PACKAGE_SMOKE_TESTS=ON`を指定してください。
 
 ---
 
@@ -286,37 +353,50 @@ ctest --test-dir out/build/default -C Debug -R Processing --output-on-failure
 
 | 名前 | 概要 | ウィンドウ |
 | --- | --- | --- |
-| `01_HelloDevice` | D3D12Core を初期化し、アダプタ情報・キュー情報を表示 | 不要 |
-| `02_ComputeGrayscale` | GPU で画像をグレースケール変換し、CPU readback で検証 | 不要 |
-| `03_HelloTriangle` | Win32 ウィンドウに三角形を描画 | あり |
-| `04_ParallelCompute` | 複数スレッドで command を記録し、compute を並列実行 | 不要 |
-| `05_BufferCompute` | Structured / Buffer を使って SAXPY を GPU 計算 | 不要 |
-| `06_UploadRingStreaming` | UploadRing を使って毎フレーム CPU→GPU texture 更新 | 不要 |
-| `07_ProcessingFusedConvertResize` | NV12 → RGBA resize fused pass | 不要 |
-| `08_ProcessingP010Rgba16` | P010 / RGBA16F の Processing API 使用例 | 不要 |
-| `09_ProcessingBlur` | Blur pass | 不要 |
-| `10_ProcessingRegionEffect` | Region effect pass | 不要 |
-| `11_ProcessingRegionBlur` | Region blur pass | 不要 |
-| `12_ProcessingColorAdjust` | Color adjustment pass | 不要 |
-| `13_ProcessingKernelFilter` | 3x3 kernel filter pass | 不要 |
-| `14_ProcessingMask` | Mask application / blend / combine / invert | 不要 |
-| `15_ProcessingThreshold` | Threshold / heatmap / color map / overlay | 不要 |
-| `16_ProcessingPyramid` | Downsample2x / Upsample2x | 不要 |
-| `17_ProcessingPyramidBlur` | Pyramid blur / pyramid region blur | 不要 |
+| `01_HelloDevice` | Device・Adapter・Queue情報 | 不要 |
+| `02_ComputeGrayscale` | Compute shader + CPU readback | 不要 |
+| `03_HelloTriangle` | Win32 + Graphics pipeline | あり |
+| `04_ParallelCompute` | 複数threadでcommand記録 | 不要 |
+| `05_BufferCompute` | Structured buffer SAXPY | 不要 |
+| `06_UploadRingStreaming` | UploadRingによる連続更新 | 不要 |
+| `07_ProcessingFusedConvertResize` | NV12 → RGBA fused resize | 不要 |
+| `08_ProcessingP010Rgba16` | P010 / RGBA16F | 不要 |
+| `09_ProcessingBlur` | Blur | 不要 |
+| `10_ProcessingRegionEffect` | Region effect | 不要 |
+| `11_ProcessingRegionBlur` | Region blur | 不要 |
+| `12_ProcessingColorAdjust` | Color adjustment | 不要 |
+| `13_ProcessingKernelFilter` | 3x3 kernel filter | 不要 |
+| `14_ProcessingMask` | Mask処理 | 不要 |
+| `15_ProcessingThreshold` | Threshold / heatmap | 不要 |
+| `16_ProcessingPyramid` | Downsample / Upsample | 不要 |
+| `17_ProcessingPyramidBlur` | Pyramid blur / region blur | 不要 |
+| `18_ProcessingCustomFusedShader` | YUV primitiveを使う独自fused shader | 不要 |
+| `19_TypedCommandList` | Typed allocator / command list | 不要 |
 
-詳細は [`sample/README.md`](sample/README.md) を参照してください。
+詳細は[`sample/README.md`](sample/README.md)を参照してください。
 
 ---
 
 ## テスト
 
-`test/` には、外部テストフレームワークに依存しない軽量テストが入っています。1 つの実行ファイル `d3d12helper_tests.exe` にまとめ、CTest から suite 単位で実行します。
+`test/`は外部test frameworkに依存しない軽量test executableをCTest suite単位で実行します。
 
-Module / Processing 系 suite：
+主なsuite:
 
 ```text
 ModuleHeaders
+Core
+Fence
+CommandContext
+TypedCommandList
+ResourceCreateValidation
+ResourceView
+UploadReadback
+ShaderCompiler
+ComputePipeline
+GraphicsPipeline
 Processing
+YuvHlslPrimitives
 ProcessingBlur
 ProcessingRegionEffect
 ProcessingRegionBlur
@@ -328,20 +408,17 @@ ProcessingPyramid
 ProcessingPyramidBlur
 ProcessingPyramidRegionBlur
 AdvancedProcessing
+CompatibilityV1121
+CoverageHardening
 ```
+
+全一覧と対象は[`doc/TestCoverage.md`](doc/TestCoverage.md)を参照してください。
 
 ---
 
 ## 自分のプロジェクトへの組み込み
 
-### CMake で組み込む場合
-
-```cmake
-add_subdirectory(path/to/D3D12Helper)
-target_link_libraries(MyApp PRIVATE D3D12Helper::D3D12Helper)
-```
-
-サンプルやテストが不要な場合は、追加前にオプションを OFF にします。
+### CMake
 
 ```cmake
 set(D3D12HELPER_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
@@ -351,30 +428,30 @@ add_subdirectory(path/to/D3D12Helper)
 target_link_libraries(MyApp PRIVATE D3D12Helper::D3D12Helper)
 ```
 
-### Visual Studio プロジェクトに直接追加する場合
+### Visual Studioへ直接追加
 
-1. インクルードディレクトリに `include/` と `include/D3D12Helper/` を追加する。
-2. `src/*.cpp` をプロジェクトのコンパイル対象に追加する。
-3. Processing Layer を使う場合は `shaders/D3D12Processing/` を実行時に参照できる場所へ配置する。
-4. 必要に応じて `dxcompiler.dll` / `dxil.dll` を exe と同じディレクトリへ置く。
+1. include directoryに`include/`と`include/D3D12Helper/`を追加する。
+2. `src/*.cpp`をcompile対象に追加する。
+3. Processing Layerを使う場合は`shaders/D3D12Processing/`を配置する。
+4. 必要に応じて`dxcompiler.dll` / `dxil.dll`をexe横へ置く。
 
 ---
 
-## D3D11Helper との対応
+## D3D11Helperとの対応
 
-| D3D12Helper | D3D11Helper 側の対応 | 備考 |
+| D3D12Helper | D3D11Helper側 | 備考 |
 | --- | --- | --- |
-| `D3D12Foundation` | `D3D11Foundation` | DirectX / DXGI / HRESULT / format utility |
-| `D3D12Core` | `D3D11Core` | デバイス生成のファサード |
-| `D3D12Queue` | Immediate Context | D3D12 では Queue を明示管理 |
-| `D3D12CommandContext` | Immediate Context | Command Allocator + Command List |
-| `D3D12Fence` | `D3D11Fence` | D3D12 では通常の GPU 同期にも使用 |
-| `D3D12Gpu` | `D3D11Gpu` | Resource / Descriptor / Upload / Readback / Pipeline |
-| `D3D12Presentation` | `D3D11Presentation` | SwapChain / Present helper |
-| `D3D12Processing` | `D3D11Processing` | v1.1.0 時点で主要 Processing API を概ね対応 |
-| `D3D12Interop` | `D3D11Interop` | shared resource / shared fence helper |
-| `D3D12Diagnostics` | `D3D11Diagnostics` | debug layer / InfoQueue / DRED |
-| `D3D12Framework` | v1.x compatibility wrapper | 既存ユーザー向けに維持 |
+| `D3D12Foundation` | `D3D11Foundation` | DirectX / DXGI / HRESULT utility |
+| `D3D12Core` | `D3D11Core` | Device facade |
+| `D3D12Queue` | Immediate Context | D3D12ではQueueを明示管理 |
+| `D3D12CommandContext` | Immediate Context | Allocator + Command List |
+| `D3D12Fence` | `D3D11Fence` | GPU同期 |
+| `D3D12Gpu` | `D3D11Gpu` | Resource / Descriptor / Transfer / Pipeline |
+| `D3D12Presentation` | `D3D11Presentation` | SwapChain / Present |
+| `D3D12Processing` | `D3D11Processing` | GPU画像処理 |
+| `D3D12Interop` | `D3D11Interop` | Shared Resource / Fence |
+| `D3D12Diagnostics` | `D3D11Diagnostics` | Debug / InfoQueue / DRED |
+| `D3D12Framework` | v1.x compatibility wrapper | 既存利用者向け |
 
 ---
 
@@ -382,29 +459,29 @@ target_link_libraries(MyApp PRIVATE D3D12Helper::D3D12Helper)
 
 | ファイル | 内容 |
 | --- | --- |
-| [`doc/README.md`](doc/README.md) | 全体像・設計思想・ファイル構成・組み込み方法 |
-| [`doc/Architecture.md`](doc/Architecture.md) | v1.1.0 以降の公開モジュール構成 |
-| [`doc/D3D12Foundation.md`](doc/D3D12Foundation.md) | Foundation API |
-| [`doc/D3D12Core.md`](doc/D3D12Core.md) | Core API リファレンス |
-| [`doc/D3D12Gpu.md`](doc/D3D12Gpu.md) | GPU module API |
-| [`doc/D3D12Framework.md`](doc/D3D12Framework.md) | v1.x Framework compatibility API |
-| [`doc/D3D12Presentation.md`](doc/D3D12Presentation.md) | Presentation module API |
-| [`doc/D3D12Processing.md`](doc/D3D12Processing.md) | Processing API リファレンス |
-| [`doc/D3D12Interop.md`](doc/D3D12Interop.md) | Interop module API |
-| [`doc/D3D12Diagnostics.md`](doc/D3D12Diagnostics.md) | Diagnostics module API |
-| [`doc/D3D12ProcessingFutureWork.md`](doc/D3D12ProcessingFutureWork.md) | Processing Layer の future work |
-| [`doc/ReleaseChecklist_v0.2.0.md`](doc/ReleaseChecklist_v0.2.0.md) | v0.2.0 release checklist |
-| [`doc/ReleaseNotes_v1.0.0.md`](doc/ReleaseNotes_v1.0.0.md) | v1.0.0 release notes |
-| [`doc/ReleaseNotes_v1.1.0.md`](doc/ReleaseNotes_v1.1.0.md) | v1.1.0 release notes |
-| [`doc/Patterns.md`](doc/Patterns.md) | よくある処理パターン |
-| [`sample/README.md`](sample/README.md) | サンプル一覧と実行方法 |
-| [`test/README.md`](test/README.md) | テスト構成と実行方法 |
+| [`doc/README.md`](doc/README.md) | ドキュメントindexと設計思想 |
+| [`doc/Architecture.md`](doc/Architecture.md) | 公開module構成 |
+| [`doc/D3D12Core.md`](doc/D3D12Core.md) | Core API |
+| [`doc/D3D12Gpu.md`](doc/D3D12Gpu.md) | GPU API |
+| [`doc/D3D12Processing.md`](doc/D3D12Processing.md) | Processing API |
+| [`doc/D3D12ProcessingWorkflow.md`](doc/D3D12ProcessingWorkflow.md) | Custom fused HLSL workflow |
+| [`doc/GenericGpuFoundationPhase1.md`](doc/GenericGpuFoundationPhase1.md) | Phase 1設計 |
+| [`doc/GenericGpuFoundationPhase2Audit.md`](doc/GenericGpuFoundationPhase2Audit.md) | 非所有Resource監査 |
+| [`doc/GenericGpuFoundationPhase3TypedCommandList.md`](doc/GenericGpuFoundationPhase3TypedCommandList.md) | Typed Command List設計 |
+| [`doc/GenericGpuFoundationPhase4YuvHlslPrimitives.md`](doc/GenericGpuFoundationPhase4YuvHlslPrimitives.md) | YUV primitive設計 |
+| [`doc/GenericGpuFoundationFinalAudit.md`](doc/GenericGpuFoundationFinalAudit.md) | Phase 1～4最終監査 |
+| [`doc/ReleaseNotes_v1.13.0.md`](doc/ReleaseNotes_v1.13.0.md) | v1.13.0 release notes |
+| [`doc/TestCoverage.md`](doc/TestCoverage.md) | CTest coverage |
+| [`sample/README.md`](sample/README.md) | サンプル一覧 |
+| [`test/README.md`](test/README.md) | test構成 |
 
 ---
 
 ## 注意点
 
-- D3D12 の Resource State は基本的に明示管理です。`D3D12Resource` の状態追跡は簡易的なものであり、サブリソース単位の複雑な状態管理や複数キュー共有では、必要に応じて before / after を手動で指定してください。
-- DXC を使う処理では、実行時に `dxcompiler.dll` が必要です。CMake ビルドでは DLL コピー処理を用意していますが、直接プロジェクトへ組み込む場合は自分で配置してください。
-- Processing Layer を使う場合は、実行時に `shaders/D3D12Processing/` を参照できるようにしてください。
-- `sample/` と `test/` は利用例・検証用です。ライブラリとして使う場合は `include/`、`src/`、必要に応じて `shaders/` を組み込めば十分です。
+- Resource Stateは基本的に明示管理です。`D3D12Resource`の追跡はResource全体に対する簡易stateであり、subresource単位、複数Queue、外部API共有ではbefore / afterを明示してください。
+- `D3D12ResourceView`は非所有です。GPU処理完了までResource lifetimeを呼び出し側が保証してください。
+- Command AllocatorのReset前に、関連するGPU処理の完了をFenceで保証してください。
+- DXCを使う処理では実行時に`dxcompiler.dll`が必要です。
+- Processing Layerでは`shaders/D3D12Processing/`を実行時に参照できるようにしてください。
+- `sample/`と`test/`は利用例・検証用です。組み込み時は`include/`、`src/`、必要に応じて`shaders/`を使用します。
