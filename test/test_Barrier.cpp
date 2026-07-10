@@ -5,6 +5,8 @@
 #include <D3D12Helper/D3D12Core/D3D12Barrier.hpp>
 #include <D3D12Helper/D3D12Core/D3D12BarrierBatch.hpp>
 
+#include <cstdint>
+
 using namespace D3D12CoreLib;
 
 TEST(Barrier, Transition) {
@@ -41,8 +43,8 @@ TEST(Barrier, Aliasing) {
 
 TEST(Barrier, BatchKeepsExplicitBarriers) {
     D3D12BarrierBatch batch;
-    auto* resourceA = reinterpret_cast<ID3D12Resource*>(static_cast<uintptr_t>(1));
-    auto* resourceB = reinterpret_cast<ID3D12Resource*>(static_cast<uintptr_t>(2));
+    auto* resourceA = reinterpret_cast<ID3D12Resource*>(static_cast<std::uintptr_t>(1));
+    auto* resourceB = reinterpret_cast<ID3D12Resource*>(static_cast<std::uintptr_t>(2));
 
     CHECK(batch.Empty());
     batch.Reserve(3);
@@ -70,7 +72,7 @@ TEST(Barrier, BatchKeepsExplicitBarriers) {
 
 TEST(Barrier, BatchSkipsNoOpTransition) {
     D3D12BarrierBatch batch;
-    auto* resource = reinterpret_cast<ID3D12Resource*>(static_cast<uintptr_t>(1));
+    auto* resource = reinterpret_cast<ID3D12Resource*>(static_cast<std::uintptr_t>(1));
 
     CHECK(!batch.Transition(
         resource,
