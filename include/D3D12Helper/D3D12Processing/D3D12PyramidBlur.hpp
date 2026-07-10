@@ -122,7 +122,7 @@ public:
     void RecordPyramidBlurView(
         D3D12CommandContext& commandContext,
         D3D12ResourceView src,
-        D3D12PyramidBlurWorkspaceView workspace,
+        const D3D12PyramidBlurWorkspaceView& workspace,
         D3D12ResourceView dst,
         const PyramidBlurDesc& desc,
         const D3D12PyramidBlurStateDesc& state);
