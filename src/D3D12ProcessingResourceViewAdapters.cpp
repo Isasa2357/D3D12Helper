@@ -14,9 +14,10 @@ namespace Processing {
 namespace {
 
 // Adapts a borrowed raw resource to the existing owned-resource implementation
-// without AddRef / Release.  The pointer is detached in this object's destructor
-// before D3D12Resource's ComPtr member is destroyed, including during exception
-// unwinding.  The adapter never escapes the public View call.
+// without AddRef / Release. The D3D12Resource member starts empty; assigning its
+// internal pointer therefore cannot release a previous object. The pointer is
+// detached in this object's destructor before the ComPtr member is destroyed,
+// including during exception unwinding. The adapter never escapes the View call.
 class ScopedBorrowedResourceAdapter {
 public:
     explicit ScopedBorrowedResourceAdapter(D3D12ResourceView view) noexcept {
