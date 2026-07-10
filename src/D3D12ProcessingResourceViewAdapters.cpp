@@ -6,6 +6,9 @@
 #include <D3D12Helper/D3D12Processing/D3D12Resize.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12Remap.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12Composite.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12ColorAdjust.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12KernelFilter.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12RegionEffect.hpp>
 
 #include <string>
 
@@ -127,6 +130,66 @@ void D3D12Compositor::RecordCompositeView(
         commandContext,
         baseAdapter.Resource(),
         overlayAdapter.Resource(),
+        dstAdapter.Resource(),
+        desc,
+        state);
+}
+
+void D3D12ColorAdjuster::RecordColorAdjustView(
+    D3D12CommandContext& commandContext,
+    D3D12ResourceView src,
+    D3D12ResourceView dst,
+    const ColorAdjustDesc& desc,
+    const D3D12ProcessingStateDesc& state) {
+
+    constexpr const char* fn = "D3D12ColorAdjuster::RecordColorAdjustView";
+    RequireExplicitStates(state.useExplicitStates, fn);
+
+    ScopedBorrowedResourceAdapter srcAdapter(src);
+    ScopedBorrowedResourceAdapter dstAdapter(dst);
+    RecordColorAdjust(
+        commandContext,
+        srcAdapter.Resource(),
+        dstAdapter.Resource(),
+        desc,
+        state);
+}
+
+void D3D12KernelFilter::RecordKernelFilterView(
+    D3D12CommandContext& commandContext,
+    D3D12ResourceView src,
+    D3D12ResourceView dst,
+    const KernelFilterDesc& desc,
+    const D3D12ProcessingStateDesc& state) {
+
+    constexpr const char* fn = "D3D12KernelFilter::RecordKernelFilterView";
+    RequireExplicitStates(state.useExplicitStates, fn);
+
+    ScopedBorrowedResourceAdapter srcAdapter(src);
+    ScopedBorrowedResourceAdapter dstAdapter(dst);
+    RecordKernelFilter(
+        commandContext,
+        srcAdapter.Resource(),
+        dstAdapter.Resource(),
+        desc,
+        state);
+}
+
+void D3D12RegionEffectProcessor::RecordRegionEffectView(
+    D3D12CommandContext& commandContext,
+    D3D12ResourceView src,
+    D3D12ResourceView dst,
+    const RegionEffectDesc& desc,
+    const D3D12ProcessingStateDesc& state) {
+
+    constexpr const char* fn = "D3D12RegionEffectProcessor::RecordRegionEffectView";
+    RequireExplicitStates(state.useExplicitStates, fn);
+
+    ScopedBorrowedResourceAdapter srcAdapter(src);
+    ScopedBorrowedResourceAdapter dstAdapter(dst);
+    RecordRegionEffect(
+        commandContext,
+        srcAdapter.Resource(),
         dstAdapter.Resource(),
         desc,
         state);
