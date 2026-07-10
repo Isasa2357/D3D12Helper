@@ -34,6 +34,14 @@ public:
         const MaskApplyDesc& desc,
         const D3D12ProcessingTwoInputStateDesc& state = {});
 
+    void RecordApplyMaskView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView src,
+        D3D12ResourceView mask,
+        D3D12ResourceView dst,
+        const MaskApplyDesc& desc,
+        const D3D12ProcessingTwoInputStateDesc& state);
+
     void RecordBlendByMask(
         D3D12CommandContext& commandContext,
         D3D12Resource& base,
@@ -43,6 +51,15 @@ public:
         const MaskBlendDesc& desc,
         const D3D12ProcessingThreeInputStateDesc& state = {});
 
+    void RecordBlendByMaskView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView base,
+        D3D12ResourceView overlay,
+        D3D12ResourceView mask,
+        D3D12ResourceView dst,
+        const MaskBlendDesc& desc,
+        const D3D12ProcessingThreeInputStateDesc& state);
+
     void RecordCombineMasks(
         D3D12CommandContext& commandContext,
         D3D12Resource& maskA,
@@ -51,12 +68,27 @@ public:
         const MaskCombineDesc& desc,
         const D3D12ProcessingTwoInputStateDesc& state = {});
 
+    void RecordCombineMasksView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView maskA,
+        D3D12ResourceView maskB,
+        D3D12ResourceView dst,
+        const MaskCombineDesc& desc,
+        const D3D12ProcessingTwoInputStateDesc& state);
+
     void RecordInvertMask(
         D3D12CommandContext& commandContext,
         D3D12Resource& mask,
         D3D12Resource& dst,
         const MaskInvertDesc& desc,
         const D3D12ProcessingStateDesc& state = {});
+
+    void RecordInvertMaskView(
+        D3D12CommandContext& commandContext,
+        D3D12ResourceView mask,
+        D3D12ResourceView dst,
+        const MaskInvertDesc& desc,
+        const D3D12ProcessingStateDesc& state);
 
     D3D12Resource CreateOutputTexture(
         D3D12Core& core,
