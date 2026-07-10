@@ -117,6 +117,7 @@ set(D3D12HELPER_TEST_SUITES
     Fence
     SharedFence
     CommandContext
+    TypedCommandList
     DescriptorAllocator
     Resource
     ResourceCreateValidation

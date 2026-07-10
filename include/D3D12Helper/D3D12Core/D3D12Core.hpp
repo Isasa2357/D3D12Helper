@@ -10,6 +10,7 @@
 #include <D3D12Helper/D3D12Core/D3D12CoreConfig.hpp>
 #include <D3D12Helper/D3D12Core/D3D12DeviceContext.hpp>
 #include <D3D12Helper/D3D12Core/D3D12Queue.hpp>
+#include <D3D12Helper/D3D12Core/D3D12CommandAllocatorContext.hpp>
 #include <D3D12Helper/D3D12Core/D3D12CommandContext.hpp>
 #include <D3D12Helper/D3D12Core/D3D12Subresource.hpp>
 #include <D3D12Helper/D3D12Core/D3D12BarrierBatch.hpp>
