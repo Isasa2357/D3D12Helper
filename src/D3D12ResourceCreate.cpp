@@ -109,6 +109,9 @@ D3D12Resource CreateTexture2DDetailed(
     if (desc.width == 0 || desc.height == 0) {
         throw std::runtime_error("CreateTexture2DDetailed: width and height must be > 0");
     }
+    if (desc.format == DXGI_FORMAT_UNKNOWN) {
+        throw std::runtime_error("CreateTexture2DDetailed: format must not be DXGI_FORMAT_UNKNOWN");
+    }
     if (desc.arraySize == 0 || desc.mipLevels == 0) {
         throw std::runtime_error("CreateTexture2DDetailed: arraySize and mipLevels must be > 0");
     }
