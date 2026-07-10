@@ -7,7 +7,7 @@ namespace D3D12CoreLib {
 namespace Processing {
 namespace {
 
-void ValidateTexture(const D3D12Resource& texture, const char* functionName) {
+void ValidateTexture(D3D12ResourceView texture, const char* functionName) {
     if (!texture.Get()) {
         std::ostringstream os;
         os << functionName << ": null texture";
@@ -26,7 +26,7 @@ void ValidateTexture(const D3D12Resource& texture, const char* functionName) {
     }
 }
 
-void ValidateUavFlag(const D3D12Resource& texture, const char* functionName) {
+void ValidateUavFlag(D3D12ResourceView texture, const char* functionName) {
     const auto desc = texture.GetDesc();
     if ((desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) == 0) {
         std::ostringstream os;
@@ -35,7 +35,7 @@ void ValidateUavFlag(const D3D12Resource& texture, const char* functionName) {
     }
 }
 
-DXGI_FORMAT ResolveViewFormat(const D3D12Resource& texture, DXGI_FORMAT viewFormat) {
+DXGI_FORMAT ResolveViewFormat(D3D12ResourceView texture, DXGI_FORMAT viewFormat) {
     return viewFormat == DXGI_FORMAT_UNKNOWN ? texture.GetFormat() : viewFormat;
 }
 
@@ -88,35 +88,34 @@ void ValidateYuv420Caps(D3D12ProcessingContext& context, DXGI_FORMAT textureForm
     throw UnsupportedFormatError(std::string(functionName) + ": texture format must be NV12 or P010");
 }
 
-} // namespace
-
-D3D12TextureViewSet CreateRgbaTextureViewSet(
+D3D12TextureViewSet CreateRgbaTextureViewSetImpl(
     D3D12ProcessingContext& context,
-    const D3D12Resource& texture,
+    D3D12ResourceView texture,
     bool createSrv,
     bool createUav,
-    DXGI_FORMAT viewFormat) {
+    DXGI_FORMAT viewFormat,
+    const char* functionName) {
 
-    constexpr const char* fn = "CreateRgbaTextureViewSet";
-    ValidateTexture(texture, fn);
+    ValidateTexture(texture, functionName);
     if (!createSrv && !createUav) {
-        throw ValidationError("CreateRgbaTextureViewSet: no view requested");
+        throw ValidationError(std::string(functionName) + ": no view requested");
     }
 
     const DXGI_FORMAT format = ResolveViewFormat(texture, viewFormat);
     if (!IsRgbaLikeFormat(format)) {
-        throw UnsupportedFormatError("CreateRgbaTextureViewSet: only R8G8B8A8_UNORM, B8G8R8A8_UNORM, and R16G16B16A16_FLOAT are supported");
+        throw UnsupportedFormatError(std::string(functionName) +
+            ": only R8G8B8A8_UNORM, B8G8R8A8_UNORM, and R16G16B16A16_FLOAT are supported");
     }
     if (createUav) {
-        ValidateUavFlag(texture, fn);
-        ValidateRgbaUavSupport(context, format, fn);
+        ValidateUavFlag(texture, functionName);
+        ValidateRgbaUavSupport(context, format, functionName);
     }
 
     D3D12TextureViewSet views;
     const UINT count = (createSrv ? 1u : 0u) + (createUav ? 1u : 0u);
     views.range = context.CbvSrvUavAllocator().AllocateRange(count);
     if (!views.range.shaderVisible) {
-        throw ValidationError("CreateRgbaTextureViewSet: descriptor allocator must be shader-visible");
+        throw ValidationError(std::string(functionName) + ": descriptor allocator must be shader-visible");
     }
 
     UINT index = 0;
@@ -144,61 +143,32 @@ D3D12TextureViewSet CreateRgbaTextureViewSet(
     return views;
 }
 
-D3D12TextureViewSet CreateNv12SrvViewSet(D3D12ProcessingContext& context, const D3D12Resource& texture) {
-    if (texture.GetFormat() != DXGI_FORMAT_NV12) {
-        throw UnsupportedFormatError("CreateNv12SrvViewSet: texture format must be NV12");
-    }
-    return CreateYuv420SrvUavViewSet(context, texture, true, false);
-}
-
-D3D12TextureViewSet CreateNv12UavViewSet(D3D12ProcessingContext& context, const D3D12Resource& texture) {
-    if (texture.GetFormat() != DXGI_FORMAT_NV12) {
-        throw UnsupportedFormatError("CreateNv12UavViewSet: texture format must be NV12");
-    }
-    return CreateYuv420SrvUavViewSet(context, texture, false, true);
-}
-
-D3D12TextureViewSet CreateNv12SrvUavViewSet(D3D12ProcessingContext& context, const D3D12Resource& texture, bool createSrv, bool createUav) {
-    if (texture.GetFormat() != DXGI_FORMAT_NV12) {
-        throw UnsupportedFormatError("CreateNv12SrvUavViewSet: texture format must be NV12");
-    }
-    return CreateYuv420SrvUavViewSet(context, texture, createSrv, createUav);
-}
-
-D3D12TextureViewSet CreateYuv420SrvViewSet(D3D12ProcessingContext& context, const D3D12Resource& texture) {
-    return CreateYuv420SrvUavViewSet(context, texture, true, false);
-}
-
-D3D12TextureViewSet CreateYuv420UavViewSet(D3D12ProcessingContext& context, const D3D12Resource& texture) {
-    return CreateYuv420SrvUavViewSet(context, texture, false, true);
-}
-
-D3D12TextureViewSet CreateYuv420SrvUavViewSet(
+D3D12TextureViewSet CreateYuv420SrvUavViewSetImpl(
     D3D12ProcessingContext& context,
-    const D3D12Resource& texture,
+    D3D12ResourceView texture,
     bool createSrv,
-    bool createUav) {
+    bool createUav,
+    const char* functionName) {
 
-    constexpr const char* fn = "CreateYuv420SrvUavViewSet";
-    ValidateTexture(texture, fn);
+    ValidateTexture(texture, functionName);
     if (!createSrv && !createUav) {
-        throw ValidationError("CreateYuv420SrvUavViewSet: no view requested");
+        throw ValidationError(std::string(functionName) + ": no view requested");
     }
 
     const auto desc = texture.GetDesc();
-    const PlaneViewFormats planeFormats = GetYuv420PlaneViewFormats(desc.Format, fn);
-    ValidateEvenSize(static_cast<UINT>(desc.Width), desc.Height, desc.Format, fn);
-    ValidateYuv420Caps(context, desc.Format, createSrv, createUav, fn);
+    const PlaneViewFormats planeFormats = GetYuv420PlaneViewFormats(desc.Format, functionName);
+    ValidateEvenSize(static_cast<UINT>(desc.Width), desc.Height, desc.Format, functionName);
+    ValidateYuv420Caps(context, desc.Format, createSrv, createUav, functionName);
 
     if (createUav) {
-        ValidateUavFlag(texture, fn);
+        ValidateUavFlag(texture, functionName);
     }
 
     D3D12TextureViewSet views;
     const UINT count = (createSrv ? 2u : 0u) + (createUav ? 2u : 0u);
     views.range = context.CbvSrvUavAllocator().AllocateRange(count);
     if (!views.range.shaderVisible) {
-        throw ValidationError("CreateYuv420SrvUavViewSet: descriptor allocator must be shader-visible");
+        throw ValidationError(std::string(functionName) + ": descriptor allocator must be shader-visible");
     }
 
     UINT index = 0;
@@ -235,6 +205,108 @@ D3D12TextureViewSet CreateYuv420SrvUavViewSet(
         views.uvUavIndex = index++;
     }
     return views;
+}
+
+} // namespace
+
+D3D12TextureViewSet CreateRgbaTextureViewSet(
+    D3D12ProcessingContext& context,
+    const D3D12Resource& texture,
+    bool createSrv,
+    bool createUav,
+    DXGI_FORMAT viewFormat) {
+    return CreateRgbaTextureViewSetImpl(
+        context,
+        D3D12ResourceView(texture),
+        createSrv,
+        createUav,
+        viewFormat,
+        "CreateRgbaTextureViewSet");
+}
+
+D3D12TextureViewSet CreateRgbaTextureViewSetFromView(
+    D3D12ProcessingContext& context,
+    D3D12ResourceView texture,
+    bool createSrv,
+    bool createUav,
+    DXGI_FORMAT viewFormat) {
+    return CreateRgbaTextureViewSetImpl(
+        context,
+        texture,
+        createSrv,
+        createUav,
+        viewFormat,
+        "CreateRgbaTextureViewSetFromView");
+}
+
+D3D12TextureViewSet CreateNv12SrvViewSet(D3D12ProcessingContext& context, const D3D12Resource& texture) {
+    if (texture.GetFormat() != DXGI_FORMAT_NV12) {
+        throw UnsupportedFormatError("CreateNv12SrvViewSet: texture format must be NV12");
+    }
+    return CreateYuv420SrvUavViewSetImpl(
+        context, D3D12ResourceView(texture), true, false, "CreateNv12SrvViewSet");
+}
+
+D3D12TextureViewSet CreateNv12UavViewSet(D3D12ProcessingContext& context, const D3D12Resource& texture) {
+    if (texture.GetFormat() != DXGI_FORMAT_NV12) {
+        throw UnsupportedFormatError("CreateNv12UavViewSet: texture format must be NV12");
+    }
+    return CreateYuv420SrvUavViewSetImpl(
+        context, D3D12ResourceView(texture), false, true, "CreateNv12UavViewSet");
+}
+
+D3D12TextureViewSet CreateNv12SrvUavViewSet(D3D12ProcessingContext& context, const D3D12Resource& texture, bool createSrv, bool createUav) {
+    if (texture.GetFormat() != DXGI_FORMAT_NV12) {
+        throw UnsupportedFormatError("CreateNv12SrvUavViewSet: texture format must be NV12");
+    }
+    return CreateYuv420SrvUavViewSetImpl(
+        context, D3D12ResourceView(texture), createSrv, createUav, "CreateNv12SrvUavViewSet");
+}
+
+D3D12TextureViewSet CreateYuv420SrvViewSet(D3D12ProcessingContext& context, const D3D12Resource& texture) {
+    return CreateYuv420SrvUavViewSetImpl(
+        context, D3D12ResourceView(texture), true, false, "CreateYuv420SrvViewSet");
+}
+
+D3D12TextureViewSet CreateYuv420UavViewSet(D3D12ProcessingContext& context, const D3D12Resource& texture) {
+    return CreateYuv420SrvUavViewSetImpl(
+        context, D3D12ResourceView(texture), false, true, "CreateYuv420UavViewSet");
+}
+
+D3D12TextureViewSet CreateYuv420SrvUavViewSet(
+    D3D12ProcessingContext& context,
+    const D3D12Resource& texture,
+    bool createSrv,
+    bool createUav) {
+    return CreateYuv420SrvUavViewSetImpl(
+        context,
+        D3D12ResourceView(texture),
+        createSrv,
+        createUav,
+        "CreateYuv420SrvUavViewSet");
+}
+
+D3D12TextureViewSet CreateYuv420SrvViewSetFromView(
+    D3D12ProcessingContext& context,
+    D3D12ResourceView texture) {
+    return CreateYuv420SrvUavViewSetImpl(
+        context, texture, true, false, "CreateYuv420SrvViewSetFromView");
+}
+
+D3D12TextureViewSet CreateYuv420UavViewSetFromView(
+    D3D12ProcessingContext& context,
+    D3D12ResourceView texture) {
+    return CreateYuv420SrvUavViewSetImpl(
+        context, texture, false, true, "CreateYuv420UavViewSetFromView");
+}
+
+D3D12TextureViewSet CreateYuv420SrvUavViewSetFromView(
+    D3D12ProcessingContext& context,
+    D3D12ResourceView texture,
+    bool createSrv,
+    bool createUav) {
+    return CreateYuv420SrvUavViewSetImpl(
+        context, texture, createSrv, createUav, "CreateYuv420SrvUavViewSetFromView");
 }
 
 } // namespace Processing
