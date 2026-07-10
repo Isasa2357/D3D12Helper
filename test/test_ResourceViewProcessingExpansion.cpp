@@ -6,6 +6,8 @@
 #include <D3D12Helper/D3D12Gpu/D3D12ResourceView.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12Processing.hpp>
 
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <vector>
