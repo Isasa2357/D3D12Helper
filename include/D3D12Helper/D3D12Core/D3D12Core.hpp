@@ -12,6 +12,7 @@
 #include <D3D12Helper/D3D12Core/D3D12Queue.hpp>
 #include <D3D12Helper/D3D12Core/D3D12CommandContext.hpp>
 #include <D3D12Helper/D3D12Core/D3D12Subresource.hpp>
+#include <D3D12Helper/D3D12Core/D3D12BarrierBatch.hpp>
 
 #include <memory>
 #include <optional>
