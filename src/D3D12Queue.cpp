@@ -5,6 +5,7 @@
 #include <D3D12Helper/D3D12Core/ThrowIfFailed.hpp>
 
 #include <stdexcept>
+#include <string>
 
 namespace D3D12CoreLib {
 
