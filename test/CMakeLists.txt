@@ -23,7 +23,7 @@ if(NOT TARGET D3D12Helper)
     include(D3D12HelperDxcRuntime)
 
     set(D3D12HELPER_INCLUDE_DIR        "${D3D12HELPER_REPO_ROOT}/include")
-    set(D3D12HELPER_PUBLIC_INCLUDE_DIR "${D3D12HELPER_REPO_ROOT}/include/D3D12Helper")
+    set(D3D12HELPER_PUBLIC_INCLUDE_DIR "${D3D12HELPER_INCLUDE_DIR}/D3D12Helper")
     set(D3D12HELPER_CORE_INCLUDE_DIR   "${D3D12HELPER_PUBLIC_INCLUDE_DIR}/D3D12Core")
     set(D3D12HELPER_FRAMEWORK_INCLUDE_DIR "${D3D12HELPER_PUBLIC_INCLUDE_DIR}/D3D12Framework")
     set(D3D12HELPER_SOURCE_DIR         "${D3D12HELPER_REPO_ROOT}/src")
@@ -146,6 +146,7 @@ set(D3D12HELPER_TEST_SUITES
     ProcessingPyramidBlur
     ProcessingPyramidRegionBlur
     AdvancedProcessing
+    CompatibilityV1121
     CoverageHardening
 )
 
