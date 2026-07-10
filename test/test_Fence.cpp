@@ -26,6 +26,12 @@ TEST(Fence, WaitIdleFlushes) {
     CHECK(q.Fence().GetCompletedValue() >= before);
 }
 
+TEST(Fence, LegacyGpuWaitSignatureRemainsUnique) {
+    using LegacyGpuWait = void (D3D12Queue::*)(ID3D12Fence*, UINT64);
+    LegacyGpuWait legacyGpuWait = &D3D12Queue::GpuWait;
+    CHECK(legacyGpuWait != nullptr);
+}
+
 TEST(Fence, SyncPointSignalsAndCpuWaits) {
     REQUIRE_CORE(core);
     D3D12Queue& q = core->DirectQueue();
@@ -35,7 +41,7 @@ TEST(Fence, SyncPointSignalsAndCpuWaits) {
     CHECK(point.GetFence() != nullptr);
     CHECK(point.GetValue() != 0);
 
-    q.CpuWait(point);
+    q.CpuWaitPoint(point);
     CHECK(point.GetFence()->GetCompletedValue() >= point.GetValue());
 }
 
@@ -46,10 +52,10 @@ TEST(Fence, SyncPointCrossQueueGpuWait) {
     D3D12Queue& consumer = core->CopyQueue();
 
     const D3D12QueueSyncPoint produced = producer.SignalPoint();
-    consumer.GpuWait(produced);
+    consumer.GpuWaitPoint(produced);
 
     const D3D12QueueSyncPoint consumed = consumer.SignalPoint();
-    consumer.CpuWait(consumed);
+    consumer.CpuWaitPoint(consumed);
 
     CHECK(consumed.GetFence()->GetCompletedValue() >= consumed.GetValue());
 }
@@ -58,6 +64,6 @@ TEST(Fence, SyncPointRejectsInvalidValue) {
     REQUIRE_CORE(core);
     D3D12QueueSyncPoint invalid;
 
-    CHECK_THROWS(core->DirectQueue().GpuWait(invalid));
-    CHECK_THROWS(core->DirectQueue().CpuWait(invalid));
+    CHECK_THROWS(core->DirectQueue().GpuWaitPoint(invalid));
+    CHECK_THROWS(core->DirectQueue().CpuWaitPoint(invalid));
 }
