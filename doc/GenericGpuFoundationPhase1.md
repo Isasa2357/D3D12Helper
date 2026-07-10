@@ -41,6 +41,32 @@ Signal 済み Fence と値をまとめる値型です。
 - state tracking や Command List への記録は行わない。
 - `Data()` / `Count()` を任意の `ResourceBarrier` 対応 Command List へ渡す。
 
+### 詳細 Resource 生成
+
+`D3D12Gpu/D3D12ResourceCreate.hpp` に、特殊な committed resource を作るための descriptor API を追加します。
+
+- `D3D12BufferCreateDesc`
+- `D3D12Texture2DCreateDesc`
+- `CreateBufferDetailed()`
+- `CreateTexture2DDetailed()`
+
+指定可能な主な項目は、alignment、heap type、CPU page property、memory pool、node mask、heap flags、resource flags、initial state、Texture2D の sample/layout/clear value です。
+
+v1.12.1 の `CreateBuffer(...)` と `CreateTexture2D(...)` には同名 overload を追加しません。`&CreateBuffer` と `&CreateTexture2D` を取得する既存コードの一意性を維持するため、詳細版には別名を使用します。既存簡易 API の実装と挙動は変更しません。
+
+### Resource 検証 Utility
+
+`D3D12Gpu/D3D12ResourceValidation.hpp` に、用途非依存の Texture2D 検証 API を追加します。
+
+- `D3D12Texture2DRequirement`
+- `D3D12ValidationResult`
+- `ValidateTexture2D()`
+- `ValidateTexture2DOrThrow()`
+
+検証対象は、null、dimension、width、height、format、array size、mip levels、sample count、required/forbidden resource flags、width/height の倍数制約、device identity です。結果返却版は複数の不一致をまとめて返し、例外版は同じ結果をメッセージ化して投げます。
+
+この Utility は「encode 可能」「NVENC に登録可能」などの用途固有条件を扱いません。それらは上位ライブラリの責務です。
+
 ## 今回含めないもの
 
 - Video Encode / Decode 専用 Context
@@ -48,7 +74,6 @@ Signal 済み Fence と値をまとめる値型です。
 - 自動 Resource State tracker
 - Typed Command List 基盤
 - 外部 Resource view
-- 詳細 Resource descriptor API
 - YUV420 HLSL primitive の追加整理
 
 これらは Phase 1 のビルド・互換性確認後に、独立した変更として追加します。
