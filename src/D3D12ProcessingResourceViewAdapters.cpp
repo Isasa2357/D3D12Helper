@@ -9,6 +9,9 @@
 #include <D3D12Helper/D3D12Processing/D3D12ColorAdjust.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12KernelFilter.hpp>
 #include <D3D12Helper/D3D12Processing/D3D12RegionEffect.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12Blur.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12RegionBlur.hpp>
+#include <D3D12Helper/D3D12Processing/D3D12MaskProcessor.hpp>
 
 #include <string>
 
@@ -63,6 +66,29 @@ void ValidateAliasedInputStates(
             std::string(functionName) +
             ": aliased input views must use identical before/after states");
     }
+}
+
+void RequireDistinctInputs(
+    D3D12ResourceView first,
+    D3D12ResourceView second,
+    const char* functionName) {
+
+    if (first.Get() != nullptr && first.Get() == second.Get()) {
+        throw ValidationError(
+            std::string(functionName) +
+            ": aliased input views are not supported by this pass");
+    }
+}
+
+void RequireDistinctInputs(
+    D3D12ResourceView first,
+    D3D12ResourceView second,
+    D3D12ResourceView third,
+    const char* functionName) {
+
+    RequireDistinctInputs(first, second, functionName);
+    RequireDistinctInputs(first, third, functionName);
+    RequireDistinctInputs(second, third, functionName);
 }
 
 } // namespace
@@ -190,6 +216,150 @@ void D3D12RegionEffectProcessor::RecordRegionEffectView(
     RecordRegionEffect(
         commandContext,
         srcAdapter.Resource(),
+        dstAdapter.Resource(),
+        desc,
+        state);
+}
+
+void D3D12Blurrer::RecordBlurView(
+    D3D12CommandContext& commandContext,
+    D3D12ResourceView src,
+    D3D12ResourceView scratch,
+    D3D12ResourceView dst,
+    const BlurDesc& desc,
+    const D3D12ProcessingBlurStateDesc& state) {
+
+    constexpr const char* fn = "D3D12Blurrer::RecordBlurView";
+    RequireExplicitStates(state.useExplicitStates, fn);
+
+    ScopedBorrowedResourceAdapter srcAdapter(src);
+    ScopedBorrowedResourceAdapter scratchAdapter(scratch);
+    ScopedBorrowedResourceAdapter dstAdapter(dst);
+    RecordBlur(
+        commandContext,
+        srcAdapter.Resource(),
+        scratchAdapter.Resource(),
+        dstAdapter.Resource(),
+        desc,
+        state);
+}
+
+void D3D12RegionBlur::RecordRegionBlurView(
+    D3D12CommandContext& commandContext,
+    D3D12ResourceView src,
+    D3D12ResourceView blurScratch,
+    D3D12ResourceView blurred,
+    D3D12ResourceView dst,
+    const RegionBlurDesc& desc,
+    const D3D12ProcessingRegionBlurStateDesc& state) {
+
+    constexpr const char* fn = "D3D12RegionBlur::RecordRegionBlurView";
+    RequireExplicitStates(state.useExplicitStates, fn);
+
+    ScopedBorrowedResourceAdapter srcAdapter(src);
+    ScopedBorrowedResourceAdapter scratchAdapter(blurScratch);
+    ScopedBorrowedResourceAdapter blurredAdapter(blurred);
+    ScopedBorrowedResourceAdapter dstAdapter(dst);
+    RecordRegionBlur(
+        commandContext,
+        srcAdapter.Resource(),
+        scratchAdapter.Resource(),
+        blurredAdapter.Resource(),
+        dstAdapter.Resource(),
+        desc,
+        state);
+}
+
+void D3D12MaskProcessor::RecordApplyMaskView(
+    D3D12CommandContext& commandContext,
+    D3D12ResourceView src,
+    D3D12ResourceView mask,
+    D3D12ResourceView dst,
+    const MaskApplyDesc& desc,
+    const D3D12ProcessingTwoInputStateDesc& state) {
+
+    constexpr const char* fn = "D3D12MaskProcessor::RecordApplyMaskView";
+    RequireExplicitStates(state.useExplicitStates, fn);
+    RequireDistinctInputs(src, mask, fn);
+
+    ScopedBorrowedResourceAdapter srcAdapter(src);
+    ScopedBorrowedResourceAdapter maskAdapter(mask);
+    ScopedBorrowedResourceAdapter dstAdapter(dst);
+    RecordApplyMask(
+        commandContext,
+        srcAdapter.Resource(),
+        maskAdapter.Resource(),
+        dstAdapter.Resource(),
+        desc,
+        state);
+}
+
+void D3D12MaskProcessor::RecordBlendByMaskView(
+    D3D12CommandContext& commandContext,
+    D3D12ResourceView base,
+    D3D12ResourceView overlay,
+    D3D12ResourceView mask,
+    D3D12ResourceView dst,
+    const MaskBlendDesc& desc,
+    const D3D12ProcessingThreeInputStateDesc& state) {
+
+    constexpr const char* fn = "D3D12MaskProcessor::RecordBlendByMaskView";
+    RequireExplicitStates(state.useExplicitStates, fn);
+    RequireDistinctInputs(base, overlay, mask, fn);
+
+    ScopedBorrowedResourceAdapter baseAdapter(base);
+    ScopedBorrowedResourceAdapter overlayAdapter(overlay);
+    ScopedBorrowedResourceAdapter maskAdapter(mask);
+    ScopedBorrowedResourceAdapter dstAdapter(dst);
+    RecordBlendByMask(
+        commandContext,
+        baseAdapter.Resource(),
+        overlayAdapter.Resource(),
+        maskAdapter.Resource(),
+        dstAdapter.Resource(),
+        desc,
+        state);
+}
+
+void D3D12MaskProcessor::RecordCombineMasksView(
+    D3D12CommandContext& commandContext,
+    D3D12ResourceView maskA,
+    D3D12ResourceView maskB,
+    D3D12ResourceView dst,
+    const MaskCombineDesc& desc,
+    const D3D12ProcessingTwoInputStateDesc& state) {
+
+    constexpr const char* fn = "D3D12MaskProcessor::RecordCombineMasksView";
+    RequireExplicitStates(state.useExplicitStates, fn);
+    RequireDistinctInputs(maskA, maskB, fn);
+
+    ScopedBorrowedResourceAdapter maskAAdapter(maskA);
+    ScopedBorrowedResourceAdapter maskBAdapter(maskB);
+    ScopedBorrowedResourceAdapter dstAdapter(dst);
+    RecordCombineMasks(
+        commandContext,
+        maskAAdapter.Resource(),
+        maskBAdapter.Resource(),
+        dstAdapter.Resource(),
+        desc,
+        state);
+}
+
+void D3D12MaskProcessor::RecordInvertMaskView(
+    D3D12CommandContext& commandContext,
+    D3D12ResourceView mask,
+    D3D12ResourceView dst,
+    const MaskInvertDesc& desc,
+    const D3D12ProcessingStateDesc& state) {
+
+    constexpr const char* fn = "D3D12MaskProcessor::RecordInvertMaskView";
+    RequireExplicitStates(state.useExplicitStates, fn);
+
+    ScopedBorrowedResourceAdapter maskAdapter(mask);
+    ScopedBorrowedResourceAdapter dstAdapter(dst);
+    RecordInvertMask(
+        commandContext,
+        maskAdapter.Resource(),
         dstAdapter.Resource(),
         desc,
         state);
