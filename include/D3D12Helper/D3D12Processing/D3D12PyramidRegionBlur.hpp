@@ -94,7 +94,7 @@ public:
     void RecordPyramidRegionBlurView(
         D3D12CommandContext& commandContext,
         D3D12ResourceView src,
-        D3D12PyramidRegionBlurWorkspaceView workspace,
+        const D3D12PyramidRegionBlurWorkspaceView& workspace,
         D3D12ResourceView dst,
         const PyramidRegionBlurDesc& desc,
         const D3D12PyramidRegionBlurStateDesc& state);
