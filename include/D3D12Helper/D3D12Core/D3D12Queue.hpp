@@ -38,18 +38,19 @@ public:
     void   WaitIdle();
 
     // 他 Queue の Fence 値完了を GPU 側で待つ（クロス Queue 同期）。
-    // v1.12.1 以前からの互換 API。
+    // v1.12.1 以前からの互換 API。関数ポインタ取得を含むソース互換性を保つため、
+    // SyncPoint 版は overload せず GpuWaitPoint という別名にする。
     void GpuWait(ID3D12Fence* fence, UINT64 value);
 
     // Fence と Signal 済み値をまとめた値型を返す追加 API。
     D3D12QueueSyncPoint SignalPoint();
 
     // point の Fence 完了を、この Queue の GPU 側で待つ。CPU はブロックしない。
-    void GpuWait(const D3D12QueueSyncPoint& point);
+    void GpuWaitPoint(const D3D12QueueSyncPoint& point);
 
     // point の Fence 完了まで CPU をブロックする。
     // Queue の状態は変更せず、point が指す Fence だけを待つ。
-    void CpuWait(const D3D12QueueSyncPoint& point) const;
+    void CpuWaitPoint(const D3D12QueueSyncPoint& point) const;
 
 private:
     ComPtr<ID3D12CommandQueue> m_queue;
