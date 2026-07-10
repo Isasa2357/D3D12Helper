@@ -100,7 +100,7 @@ TEST(UploadReadback, PartialRangeRoundTrip) {
     const UINT64 rangeBytes = static_cast<UINT64>(rangeCount) * sizeof(uint32_t);
 
     auto mapped = readback.MapRead(offset, rangeBytes);
-    CHECK(mapped);
+    CHECK(static_cast<bool>(mapped));
     CHECK_EQ(mapped.Offset(), offset);
     CHECK_EQ(mapped.Size(), rangeBytes);
 
@@ -136,14 +136,14 @@ TEST(UploadReadback, PartialRangePreventsDoubleMap) {
     readback.Initialize(core->GetDevice(), 64);
 
     auto mapped = readback.MapRead(8, 16);
-    CHECK(mapped);
+    CHECK(static_cast<bool>(mapped));
     CHECK_THROWS(readback.MapRead(0, 8));
     CHECK_THROWS(readback.Map());
     CHECK_THROWS(readback.Unmap());
 
     D3D12MappedReadRange moved = std::move(mapped);
     CHECK(!mapped);
-    CHECK(moved);
+    CHECK(static_cast<bool>(moved));
 
     moved = D3D12MappedReadRange{};
 
