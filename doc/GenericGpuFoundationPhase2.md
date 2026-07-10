@@ -1,76 +1,115 @@
 # Generic GPU Foundation Phase 2
 
-Phase 2 adds an explicit non-owning path for D3D12 resources supplied by camera SDKs, runtimes, swapchains, inference systems, and other external owners.
+この文書は、外部所有 `ID3D12Resource` を AddRef せず扱うための非所有 view と、明示 Resource State を用いる Processing 経路の設計境界を記録します。
 
 ## `D3D12ResourceView`
 
-`D3D12Gpu/D3D12ResourceView.hpp` provides a pointer-sized view of `ID3D12Resource`.
+`D3D12ResourceView` は `ID3D12Resource*` だけを保持する非所有型です。
 
-- It never calls `AddRef` or `Release`.
-- It stores no resource state.
-- It is trivially copyable and trivially destructible.
-- The external owner must keep the resource alive through every CPU operation and all submitted GPU work that uses it.
-- It can be constructed explicitly from either `ID3D12Resource*` or an owned `D3D12Resource`.
+- AddRef / Release を行わない。
+- Resource State を保持しない。
+- pointer-sized。
+- trivially copyable / trivially destructible。
+- raw `ID3D12Resource*` または既存 `D3D12Resource` から明示的に生成する。
+- 参照先 Resource は、view を利用する処理と投入済み GPU work が完了するまで呼び出し側が保持する。
 
-The absence of state is intentional. A separate mutable state value inside each borrowed view could diverge when multiple views refer to the same resource or when another API changes the resource state.
-
-## Layering
-
-`D3D12ResourceView` belongs to `D3D12Gpu`. `D3D12Core` remains independent of Layer 2 types.
-
-Core barrier APIs continue to accept raw `ID3D12Resource*`. A view is used with them through `view.Get()`:
-
-```cpp
-D3D12BarrierBatch batch;
-batch.Transition(
-    view.Get(),
-    D3D12_RESOURCE_STATE_COMMON,
-    D3D12_RESOURCE_STATE_COPY_SOURCE);
-```
-
-This avoids a reverse dependency from `D3D12Core` to `D3D12Gpu`.
+この型には `SetState()` を追加しません。複数 view 間で独立した state cache が分岐することを防ぎます。
 
 ## Validation
 
-The Phase 1 raw-pointer validation API remains unchanged. Distinct entry points accept the non-owning view:
+既存 raw-pointer API を変更・overloadせず、別名で次を追加します。
 
 - `ValidateTexture2DView()`
 - `ValidateTexture2DViewOrThrow()`
 
-Distinct names avoid introducing overload ambiguity into the already tested Phase 1 API.
+検証内容は既存 `ValidateTexture2D()` と同じです。
 
-## Processing
+## Processing descriptor view
 
-The first Processing integration covers the paths most directly useful for camera and video pipelines:
+Texture view 作成には `FromView` suffix の非所有経路を追加します。
+
+- `CreateRgbaTextureViewSetFromView()`
+- `CreateYuv420SrvViewSetFromView()`
+- `CreateYuv420UavViewSetFromView()`
+- `CreateYuv420SrvUavViewSetFromView()`
+
+既存の `D3D12Resource` 版は削除・overloadしません。
+
+## Processing shortcut API
+
+現在、次の非所有経路を提供します。
 
 - `D3D12FormatConverter::RecordConvertView()`
 - `D3D12FusedProcessor::RecordConvertResizeView()`
-- RGBA and YUV420 descriptor creation from `D3D12ResourceView`
+- `D3D12Resizer::RecordResizeView()`
+- `D3D12Remapper::RecordRemapView()`
+- `D3D12Compositor::RecordCompositeView()`
 
-The existing owned-resource methods remain unchanged and continue to support their single-state cache.
+既存メソッドと同名の overload は追加せず、`View` suffix の別名APIとします。これにより、v1.12.1 で可能だったメンバー関数ポインタ取得の一意性を維持します。
 
-The view methods require:
+## 明示 State の必須化
+
+すべての非所有 Processing API では `useExplicitStates == true` が必須です。
 
 ```cpp
+D3D12ProcessingStateDesc state;
 state.useExplicitStates = true;
+state.srcBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+state.srcAfter  = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+state.dstBefore = D3D12_RESOURCE_STATE_COMMON;
+state.dstAfter  = D3D12_RESOURCE_STATE_COMMON;
 ```
 
-The caller must provide `srcBefore`, `srcAfter`, `dstBefore`, and `dstAfter`. Processing records the requested barriers but never mutates an external state cache.
+非所有経路では次を行いません。
 
-The existing method names are not overloaded with view arguments. Separate `*View` names preserve unambiguous expressions such as:
+- `D3D12Resource::GetState()` への依存
+- `D3D12Resource::SetState()` による state cache 更新
+- Resource lifetime の延長
+
+2入力APIで同一Resourceを両入力へ渡す場合、両入力のbefore / after stateは一致していなければなりません。
+
+## 内部 adapter
+
+Resize / Remap / Composite の View API は、既存の owned-resource 実装を再利用するため、呼び出し中だけ有効な scoped adapter を使用します。
+
+- adapter は AddRef / Release を行わない。
+- adapter は例外送出時を含めて raw pointer を detach してから破棄される。
+- adapter は呼び出し外へ保存されない。
+- View API が明示stateを必須とするため、adapter内の独立state cacheは参照・更新されない。
+
+## Barrier Layer
+
+`D3D12BarrierBatch` は Layer 1 のため、Layer 2 の `D3D12ResourceView` へ依存させません。
 
 ```cpp
-auto fn = &D3D12FormatConverter::RecordConvert;
-auto fusedFn = &D3D12FusedProcessor::RecordConvertResize;
+batch.Transition(view.Get(), before, after);
 ```
 
-## Compatibility
+raw pointer を渡す既存APIで対応します。
 
-- No v1.12.1 public type, function, parameter, return type, or include path is removed or changed.
-- Existing Processing entry points remain uniquely addressable.
-- Existing owned-resource behavior remains available.
-- New APIs do not contain encoder, codec, Media Foundation, or NVENC-specific concepts.
+## Lifetime
 
-## Current scope
+外部 owner は少なくとも次の期間、Resource を生存させる必要があります。
 
-This phase does not yet add view entry points to every Processing processor. Format conversion and fused convert/resize are implemented first because they are the primary boundary operations for camera, inference, and video pipelines. Remaining processors can be migrated after this state/lifetime model passes Debug and Release testing.
+1. descriptor 作成中
+2. command 記録中
+3. command queue へ投入後、対象Fence完了まで
+
+`D3D12ResourceView` を非同期ジョブへ保存する場合、上位層は別途Resource所有権を保持する必要があります。
+
+## 互換性
+
+- v1.12.1 の既存公開メソッドを削除・変更しない。
+- 同名overloadを追加しない。
+- owned `D3D12Resource` 経路の単一 state cache を維持する。
+- `CompatibilityV1121` suite で既存 Processing メソッドの型を compile-time 検証する。
+
+## 次段階
+
+本変更の Debug / Release テスト後、構造が近い単一入力・単一出力processorへ展開します。
+
+- `D3D12ColorAdjuster`
+- `D3D12KernelFilter`
+- `D3D12RegionEffectProcessor`
+
+scratch resourceや3入力以上を扱うProcessorは、専用state descriptorとlifetime条件を確認してから段階的に対応します。
