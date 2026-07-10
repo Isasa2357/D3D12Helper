@@ -1,89 +1,129 @@
 # D3D12Helper テスト
 
-機能（suite）ごとにファイルを分割したユニット/統合テストです。外部のテストフレームワーク（GoogleTest / Catch2 等）に依存せず、`TestFramework.hpp` の軽量ハーネスで動きます。
+機能ごとに分割したunit / integration testです。GoogleTestやCatch2には依存せず、`TestFramework.hpp`の軽量harnessで動作します。
 
-## 構成
+すべての`test_*.cpp`は1つの`d3d12helper_tests`へlinkされ、CTestからsuite名を引数として実行されます。
 
-| ファイル | suite | 内容 | デバイス |
-| --- | --- | --- | --- |
-| `test_FormatUtil.cpp` | `FormatUtil` | フォーマット判定・bpp/Bpp | 不要 |
-| `test_DxgiUtil.cpp` | `DxgiUtil` | LUID 比較・文字列化 | 不要 |
-| `test_ThrowIfFailed.cpp` | `ThrowIfFailed` | HRESULT 例外化・マクロ | 不要 |
-| `test_Barrier.cpp` | `Barrier` | バリア生成ヘルパのフィールド | 不要 |
-| `test_Core.cpp` | `Core` | 初期化・アダプタ・キュー | 必要 |
-| `test_Fence.cpp` | `Fence` | Signal/Wait・完了値 | 必要 |
-| `test_CommandContext.cpp` | `CommandContext` | Reset/Close ライフサイクル | 必要 |
-| `test_DescriptorAllocator.cpp` | `DescriptorAllocator` | 確保・容量超過・RTV | 必要 |
-| `test_Resource.cpp` | `Resource` | バッファ/テクスチャ生成・状態追跡 | 必要 |
-| `test_HelperViews.cpp` / `test_Helpers.cpp` | `Helpers` | Buffer SRV/UAV、CBV、RTV、DSV、upload helper | 必要 |
-| `test_UploadReadback.cpp` | `UploadReadback` | Upload→GPU→Readback 往復 | 必要 |
-| `test_UploadRing.cpp` | `UploadRing` | 確保・会計・回収 | 必要 |
-| `test_ShaderCompiler.cpp` | `ShaderCompiler` | DXC/D3DCompile・失敗時例外 | DXC |
-| `test_ComputePipeline.cpp` | `ComputePipeline` | テンプレ RootSig の Dispatch 検証 | DXC |
-| `test_GraphicsPipeline.cpp` | `GraphicsPipeline` | PipelineDefaults・オフスクリーン描画 | DXC |
-| `test_Processing.cpp` | `Processing` | Processing 基本 API、format convert、resize、NV12 readback | 必要 / DXC |
-| `test_ProcessingRemapComposite.cpp` | `Processing` | remap / composite の shader compile と readback 検証 | 必要 / DXC |
-| `test_ProcessingFusedYuvP010.cpp` | `Processing` | fused convert+resize、P010、RGBA16F の readback 検証 | 必要 / DXC |
+## 主なsuite
 
-共通ファイル:
+### Core / Foundation
 
-- `TestFramework.hpp` — 依存なしのハーネス。`TEST(suite, name)`, `CHECK`, `CHECK_EQ`, `CHECK_NEAR`, `CHECK_THROWS`, `CHECK_NOTHROW`, `TEST_SKIP`, `TEST_FAIL`。
-- `TestCommon.hpp` — デバイスを使うテスト用。`REQUIRE_CORE(var)`（WARP 許可で Core を作り、作れなければ SKIP）、`REQUIRE_DXC()`（`dxcompiler.dll` が無ければ SKIP）。
-- `test_main.cpp` — 引数なしで全 suite、引数に suite 名を渡すとその機能だけ実行。
+| suite | 主な内容 | Device |
+| --- | --- | --- |
+| `ModuleHeaders` | 公開umbrella header | 不要 |
+| `FormatUtil` | DXGI format判定 | 不要 |
+| `DxgiUtil` | LUID utility | 不要 |
+| `ThrowIfFailed` | HRESULT例外化 | 不要 |
+| `Barrier` | Barrier helper / batch | 一部不要 |
+| `Subresource` | subresource index | 不要 |
+| `Core` | Device / Adapter / Queue | 必要 |
+| `Fence` | Signal / Wait | 必要 |
+| `SharedFence` | Shared Fence | 必要 |
+| `CommandContext` | Reset / Close lifecycle | 必要 |
+| `TypedCommandList` | typed allocator / list / specialized IID | 必要 |
 
-すべての `test_*.cpp` は 1 つの実行ファイル `d3d12helper_tests` にまとめられ、CTest からは **suite 名を引数に渡して機能単位で** 実行します。
+### GPU / Resource
 
-## Processing suite の検証内容
+| suite | 主な内容 | Device |
+| --- | --- | --- |
+| `DescriptorAllocator` | descriptor確保・容量検証 | 必要 |
+| `Resource` | Buffer / Texture / state | 必要 |
+| `ResourceCreateValidation` | detailed create descriptor / Texture2D validation | 必要 |
+| `ResourceView` | 非所有view / COM参照数 / Processing record | 必要 / DXC |
+| `Helpers` | SRV / UAV / CBV / RTV / DSV | 必要 |
+| `UploadReadback` | CPU→GPU→CPU往復 | 必要 |
+| `Transfer` | texture transfer | 必要 |
+| `UploadRing` | ring確保・回収 | 必要 |
+| `ShaderCompiler` | DXC / D3DCompile | DXC |
+| `ShaderReflection` | compiled shader reflection | DXC |
+| `ComputePipeline` | Compute PSO / dispatch | DXC |
+| `GraphicsPipeline` | Graphics PSO / offscreen draw | DXC |
+| `CopyResolveMipmap` | Copy / Resolve / Mipmap | 必要 |
+| `ViewState` | view descriptor / state helper | 必要 |
+| `Binding` | descriptor/root binding | 必要 |
 
-`Processing` suite は Layer 3 の GPU 実行結果を readback して検証します。
+### Processing
 
-主な検証:
+| suite | 主な内容 |
+| --- | --- |
+| `Processing` | format convert / resize / remap / composite / fused基本経路 |
+| `YuvHlslPrimitives` | NV12/P010、matrix/range、GPU golden、plane storage |
+| `ProcessingBlur` | Gaussian / Box blur |
+| `ProcessingRegionEffect` | region effect |
+| `ProcessingRegionBlur` | region blur |
+| `ProcessingColorAdjust` | color adjustment |
+| `ProcessingKernelFilter` | 3x3 kernel |
+| `ProcessingMask` | mask apply / blend / combine / invert |
+| `ProcessingThreshold` | threshold / heatmap / color map / overlay |
+| `ProcessingPyramid` | downsample / upsample |
+| `ProcessingPyramidBlur` | pyramid blur |
+| `ProcessingPyramidRegionBlur` | pyramid region blur |
+| `AdvancedProcessing` | affine / perspective / 3D LUT / undistort map |
 
-- `D3D12ProcessingContext` の初期化と capability query
-- shader cache による Processing shader compile
-- RGBA / BGRA / RGBA16F / NV12 / P010 view 作成
-- RGBA copy / BGRA typed store の readback 検証
-- NV12 → RGBA の readback 検証
-- RGBA → NV12 の Y / UV plane readback 検証
-- P010 → RGBA の readback 検証
-- point resize の readback 検証
-- remap の readback 検証
-- composite alpha blend の readback 検証
-- fused convert+resize の readback 検証
+### Compatibility / Hardening
 
-## ビルドと実行
+- `Hardening`
+- `CompatibilityV1121`
+- `CoverageHardening`
 
-ルートからビルドすると、既定でテストも一緒にビルドされます（`D3D12HELPER_BUILD_TESTS=ON`）。
+`CompatibilityV1121`は、既存public methodやfree functionの型をcompile-timeで固定し、同名overloadによる`decltype(&Function)`の曖昧化も検出します。
+
+## 共通ファイル
+
+- `TestFramework.hpp`: `TEST`, `CHECK`, `CHECK_EQ`, `CHECK_NEAR`, `CHECK_THROWS`, `CHECK_NOTHROW`, `TEST_SKIP`, `TEST_FAIL`。
+- `TestCommon.hpp`: `REQUIRE_CORE(var)`、`REQUIRE_DXC()`などの環境依存test helper。
+- `test_main.cpp`: 引数なしで全suite、suite名指定で対象suiteのみ実行。
+
+## Buildと実行
 
 ```bat
 cmake -S . -B out/build/default -G "Visual Studio 17 2022" -A x64 ^
-  -DD3D12HELPER_BUILD_TESTS=ON
+  -DD3D12HELPER_BUILD_TESTS=ON ^
+  -DD3D12HELPER_BUILD_SAMPLES=OFF ^
+  -DD3D12HELPER_INSTALL=OFF ^
+  -DD3D12HELPER_ENABLE_PACKAGE_SMOKE_TESTS=OFF
 
-cmake --build out/build/default --config Debug
-
-ctest --test-dir out/build/default -C Debug --output-on-failure
+cmake --build out/build/default --config Debug --parallel
+ctest --test-dir out/build/default -C Debug --parallel --output-on-failure
 ```
 
-特定機能だけ実行する場合:
+特定suiteのみ:
 
 ```bat
-ctest --test-dir out/build/default -C Debug -R Processing --output-on-failure
-ctest --test-dir out/build/default -C Debug -R ShaderCompiler --output-on-failure
+ctest --test-dir out/build/default -C Debug -R "^(ResourceView|TypedCommandList|YuvHlslPrimitives)$" --parallel --output-on-failure
 ```
 
-実行ファイルを直接呼ぶこともできます。
+実行ファイルを直接呼ぶ場合:
 
 ```bat
 out\build\default\test\Debug\d3d12helper_tests.exe
-out\build\default\test\Debug\d3d12helper_tests.exe Processing
+out\build\default\test\Debug\d3d12helper_tests.exe YuvHlslPrimitives
 ```
 
-## 環境による SKIP
+## Package smoke test
 
-- GPU が無い環境でも WARP で動きますが、D3D12 デバイスをまったく作れない場合、デバイス依存の suite は各ケースが `[ SKIP ]` になります（失敗ではありません）。
-- `dxcompiler.dll` が見つからない場合、DXC を使う suite（ShaderCompiler / ComputePipeline / GraphicsPipeline / Processing）は SKIP または compile 失敗になります。
-- 一部の typed UAV store が非対応な環境では、対応 format を必要とする Processing test が SKIP されることがあります。
+Release前にはinstall / `find_package`経路も確認します。
 
-## テストの追加
+```bat
+cmake -S . -B out/build/release -G "Visual Studio 17 2022" -A x64 ^
+  -DD3D12HELPER_BUILD_TESTS=ON ^
+  -DD3D12HELPER_INSTALL=ON ^
+  -DD3D12HELPER_ENABLE_PACKAGE_SMOKE_TESTS=ON
 
-新しい機能のテストは `test_<Feature>.cpp` を追加し、`TEST(<Feature>, <Case>) { ... }` を書くだけです（自己登録されます）。`test/CMakeLists.txt` の `D3D12HELPER_TEST_SUITES` に `<Feature>` を足すと、その機能が独立した CTest エントリになります。ファイルは `test_*.cpp` glob で自動的にビルド対象へ入ります。
+cmake --build out/build/release --config Release --parallel
+ctest --test-dir out/build/release -C Release -R "^PackageSmoke$" --parallel --output-on-failure
+```
+
+## 環境によるSKIP
+
+- Hardware GPUがない場合はWARPを使用します。Device自体を作れない場合、Device依存caseはSKIPになります。
+- `dxcompiler.dll`がない場合、DXC依存caseはSKIPまたはcompile failureになります。
+- Adapterが特定Formatのtyped UAV storeやNV12/P010 plane viewをサポートしない場合、そのcapabilityだけを必要とするcaseがSKIPされます。
+
+## テスト追加方法
+
+1. `test_<Feature>.cpp`を追加する。
+2. `TEST(<Suite>, <Case>)`を記述する。
+3. 新しいsuiteの場合は`test/CMakeLists.txt`の`D3D12HELPER_TEST_SUITES`へ追加する。
+
+`test_*.cpp`はCMake globで自動的にbuild対象へ入ります。
