@@ -50,6 +50,8 @@ struct D3D12Texture2DCreateDesc {
 
 // Distinct names intentionally preserve unambiguous address-of expressions for
 // the v1.12.1 CreateBuffer / CreateTexture2D function signatures.
+// These functions create committed resources only; placed and reserved
+// resources remain outside this API.
 D3D12Resource CreateBufferDetailed(
     D3D12Core& core,
     const D3D12BufferCreateDesc& desc);
