@@ -83,8 +83,8 @@ D3D12ReadbackBuffer::~D3D12ReadbackBuffer() {
 
 void D3D12ReadbackBuffer::Destroy() noexcept {
     if (m_resource && m_mappedPtr) {
-        D3D12_RANGE empty = { 0, 0 };
-        m_resource->Unmap(0, &empty);
+        // v1.12.1 以前の destructor / move-assignment 経路と同じ written range を維持する。
+        m_resource->Unmap(0, nullptr);
     }
 
     if (m_mapMode && m_mapMode->load(std::memory_order_acquire) == kMapModeLegacy) {
