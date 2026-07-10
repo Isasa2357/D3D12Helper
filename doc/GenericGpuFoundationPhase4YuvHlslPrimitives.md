@@ -118,6 +118,7 @@ The following built-in shaders now use the same primitives:
 - `ConvertRgbToNv12.hlsl`
 - `FusedYuv420ToRgbResize.hlsl`
 - `FusedRgbToRgbResize.hlsl`
+- `ResizeRgba.hlsl`
 
 The filenames remain unchanged for source and runtime compatibility. Despite their historical `Nv12` names, format-dependent paths select NV12 or P010 from `SrcFormat` / `DstFormat`.
 
