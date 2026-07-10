@@ -44,7 +44,7 @@ public:
     }
 
     bool IsInitialized() const noexcept {
-        return m_allocator != nullptr;
+        return m_allocator.Get() != nullptr;
     }
 
 private:
