@@ -146,6 +146,26 @@ uint16_t ReadU16(const std::byte* data) {
     return value;
 }
 
+UINT64 PlaneMappedSize(const PlaneReadback& readback, UINT plane) {
+    if (plane >= readback.layout.size()) {
+        TEST_FAIL("PlaneMappedSize: plane index is out of range");
+    }
+    if (readback.rows[plane] == 0) {
+        return 0;
+    }
+
+    const UINT64 rowPitch = readback.layout[plane].Footprint.RowPitch;
+    const UINT64 rowBytes = readback.rowSize[plane];
+    if (rowBytes > rowPitch) {
+        TEST_FAIL("PlaneMappedSize: row size exceeds row pitch");
+    }
+
+    // GetCopyableFootprints reports totalBytes through the end of the final
+    // populated row, not through the full padding of that row. Therefore the
+    // readable range is (rows - 1) * rowPitch + rowBytes, not rows * rowPitch.
+    return static_cast<UINT64>(readback.rows[plane] - 1u) * rowPitch + rowBytes;
+}
+
 } // namespace
 
 TEST(YuvHlslPrimitives, Nv12StoreWritesBt709LimitedCodes) {
@@ -158,9 +178,9 @@ TEST(YuvHlslPrimitives, Nv12StoreWritesBt709LimitedCodes) {
     auto readback = ConvertUniformRedAndReadPlanes(fixture, DXGI_FORMAT_NV12);
 
     {
-        const UINT64 size =
-            static_cast<UINT64>(readback.layout[0].Footprint.RowPitch) * readback.rows[0];
-        auto mapped = readback.buffer.MapRead(readback.layout[0].Offset, size);
+        auto mapped = readback.buffer.MapRead(
+            readback.layout[0].Offset,
+            PlaneMappedSize(readback, 0));
         for (UINT row = 0; row < 2; ++row) {
             const auto* rowData = mapped.Data() +
                 static_cast<size_t>(row) * readback.layout[0].Footprint.RowPitch;
@@ -170,9 +190,9 @@ TEST(YuvHlslPrimitives, Nv12StoreWritesBt709LimitedCodes) {
     }
 
     {
-        const UINT64 size =
-            static_cast<UINT64>(readback.layout[1].Footprint.RowPitch) * readback.rows[1];
-        auto mapped = readback.buffer.MapRead(readback.layout[1].Offset, size);
+        auto mapped = readback.buffer.MapRead(
+            readback.layout[1].Offset,
+            PlaneMappedSize(readback, 1));
         CHECK(static_cast<uint8_t>(mapped.Data()[0]) == 102u);
         CHECK(static_cast<uint8_t>(mapped.Data()[1]) == 240u);
     }
@@ -188,9 +208,9 @@ TEST(YuvHlslPrimitives, P010StoreWritesHighTenBitCodes) {
     auto readback = ConvertUniformRedAndReadPlanes(fixture, DXGI_FORMAT_P010);
 
     {
-        const UINT64 size =
-            static_cast<UINT64>(readback.layout[0].Footprint.RowPitch) * readback.rows[0];
-        auto mapped = readback.buffer.MapRead(readback.layout[0].Offset, size);
+        auto mapped = readback.buffer.MapRead(
+            readback.layout[0].Offset,
+            PlaneMappedSize(readback, 0));
         for (UINT row = 0; row < 2; ++row) {
             const auto* rowData = mapped.Data() +
                 static_cast<size_t>(row) * readback.layout[0].Footprint.RowPitch;
@@ -200,9 +220,9 @@ TEST(YuvHlslPrimitives, P010StoreWritesHighTenBitCodes) {
     }
 
     {
-        const UINT64 size =
-            static_cast<UINT64>(readback.layout[1].Footprint.RowPitch) * readback.rows[1];
-        auto mapped = readback.buffer.MapRead(readback.layout[1].Offset, size);
+        auto mapped = readback.buffer.MapRead(
+            readback.layout[1].Offset,
+            PlaneMappedSize(readback, 1));
         CHECK(ReadU16(mapped.Data() + 0) == static_cast<uint16_t>(409u << 6u));
         CHECK(ReadU16(mapped.Data() + 2) == static_cast<uint16_t>(960u << 6u));
     }
